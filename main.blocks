@@ -1,0 +1,25 @@
+<xml xmlns="https://developers.google.com/blockly/xml"><block type="device_gesture_event" id="I6Vr;RJSa[wUaW9t{_Mb" x="0" y="0"><field name="NAME">Gesture.LogoUp</field><statement name="HANDLER"><block type="device_show_leds" id="op5C]kI17LW^aOjps3BV"><field name="LEDS">`
+        . . # . . 
+        . # # # . 
+        # . # . # 
+        . . # . . 
+        . . # . .
+        `</field></block></statement></block><block type="device_gesture_event" id="BRJGE[Yj^2t(H^n++|PR" x="253" y="1"><field name="NAME">Gesture.LogoDown</field><statement name="HANDLER"><block type="device_show_leds" id="7,.eb6$[i;DK#{}kLxYl"><field name="LEDS">`
+        . . # . . 
+        . . # . . 
+        # . # . # 
+        . # # # . 
+        . . # . .
+        `</field></block></statement></block><block type="device_gesture_event" id="bAh}RNW/$M#SM+JI/.-1" x="531" y="1"><field name="NAME">Gesture.TiltLeft</field><statement name="HANDLER"><block type="device_show_leds" id="j7`U+.6QgXH45(_-mvHO"><field name="LEDS">`
+        . . # . . 
+        . # . . . 
+        # # # # # 
+        . # . . . 
+        . . # . .
+        `</field></block></statement></block><block type="device_gesture_event" id=".Wxw,MjMlS}blg[:F+z@" x="811" y="1"><field name="NAME">Gesture.TiltRight</field><statement name="HANDLER"><block type="device_show_leds" id=".GjEQ4r3/DN@t-ag{7#G"><field name="LEDS">`
+        . . # . . 
+        . . . # . 
+        # # # # # 
+        . . . # . 
+        . . # . .
+        `</field></block></statement></block></xml>
