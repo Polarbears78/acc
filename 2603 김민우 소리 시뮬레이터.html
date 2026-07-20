@@ -625,6 +625,107 @@
         const ctxLongitudinal = ui.longitudinalCanvas.getContext('2d');
         const ctxCompositing = ui.compositingCanvas.getContext('2d');
 
+        // --- 설정·저장소 영구 보존 (localStorage + IndexedDB, 서버 불필요) ---
+        // 재생/녹화 상태는 저장하지 않음 — 페이지는 항상 정지 상태로 시작
+        const SETTINGS_KEY = 'waveSimSettings';
+        let db = null;
+        let restoredOverlap = false;
+
+        function saveSettings() {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                    isMuted,
+                    triggerMode,
+                    freq: ui.sliderFreq.value,
+                    amp: ui.sliderAmp.value,
+                    pulseRate: ui.sliderPulseRate.value,
+                    selectedWaveforms,
+                    overlap: document.getElementById('overlapToggle').checked,
+                }));
+            } catch (e) { /* 저장이 실패해도 동작에는 지장 없음 */ }
+        }
+
+        function loadSettings() {
+            try {
+                const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+                if (!s) return;
+                if (s.freq) { ui.sliderFreq.value = s.freq; ui.freqInput.value = s.freq; }
+                if (s.amp !== undefined) { ui.sliderAmp.value = s.amp; ui.ampInput.value = s.amp; }
+                if (s.pulseRate) { ui.sliderPulseRate.value = s.pulseRate; ui.pulseRateInput.value = s.pulseRate; }
+                if (Array.isArray(s.selectedWaveforms)) {
+                    const valid = s.selectedWaveforms.filter(w => WAVE_NAMES[w]);
+                    if (valid.length) selectedWaveforms = valid;
+                }
+                isMuted = !!s.isMuted;
+                if (s.triggerMode === 'pulse' || s.triggerMode === 'continuous') triggerMode = s.triggerMode;
+                restoredOverlap = !!s.overlap;
+            } catch (e) {}
+        }
+
+        function applyRestoredState() {
+            ui.waveformButtons.forEach(b => b.classList.toggle('selected', selectedWaveforms.includes(b.id)));
+            ui.triggerModeButtons.forEach(b => b.classList.toggle('selected', b.id === 'mode-' + triggerMode));
+            ui.speakerOnIcon.classList.toggle('hidden', isMuted);
+            ui.speakerOffIcon.classList.toggle('hidden', !isMuted);
+            ui.pulseRateControl.toggleAttribute('disabled', triggerMode !== 'pulse');
+            document.getElementById('overlapToggle').checked = restoredOverlap;
+        }
+
+        function openDB() {
+            return new Promise((resolve) => {
+                if (!window.indexedDB) return resolve(null);
+                const req = indexedDB.open('waveSimDB', 1);
+                req.onupgradeneeded = () => {
+                    const d = req.result;
+                    if (!d.objectStoreNames.contains('images')) d.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+                    if (!d.objectStoreNames.contains('videos')) d.createObjectStore('videos', { keyPath: 'id', autoIncrement: true });
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            });
+        }
+        function dbAdd(storeName, record) {
+            return new Promise((resolve) => {
+                if (!db) return resolve(null);
+                try {
+                    const req = db.transaction(storeName, 'readwrite').objectStore(storeName).add(record);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                } catch (e) { resolve(null); }
+            });
+        }
+        function dbDelete(storeName, id) {
+            if (!db || id === null || id === undefined) return;
+            try { db.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) {}
+        }
+        function dbGetAll(storeName) {
+            return new Promise((resolve) => {
+                if (!db) return resolve([]);
+                try {
+                    const req = db.transaction(storeName, 'readonly').objectStore(storeName).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                } catch (e) { resolve([]); }
+            });
+        }
+
+        function restoreGalleries() {
+            openDB().then(async (d) => {
+                db = d;
+                if (!db) return;
+                const images = await dbGetAll('images');
+                images.sort((a, b) => a.id - b.id);
+                for (const rec of images) {
+                    addToGallery(rec.dataURL, rec.title, { time: new Date(rec.time), dbId: rec.id });
+                }
+                const videos = await dbGetAll('videos');
+                videos.sort((a, b) => a.id - b.id);
+                for (const rec of videos) {
+                    addVideoToGallery(URL.createObjectURL(rec.blob), { time: new Date(rec.time), dbId: rec.id });
+                }
+            });
+        }
+
         // --- 오디오 초기화 ---
         function initAudio() {
             if (audioCtx) return;
@@ -775,6 +876,7 @@
                     masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
                 }
             }
+            saveSettings();
         }
 
         // --- 파형 값 계산 ---
@@ -1049,7 +1151,9 @@
             }
 
             const dataURL = compositeCanvas.toDataURL('image/png');
-            addToGallery(dataURL, graphTitle);
+            const time = new Date();
+            dbAdd('images', { dataURL, title: graphTitle, time: time.toISOString() })
+                .then(id => addToGallery(dataURL, graphTitle, { time, dbId: id }));
         }
 
         // --- 저장소 빈 슬롯 관리 ---
@@ -1108,7 +1212,7 @@
             compareBtn.classList.toggle('active', count >= 1);
         }
 
-        function addToGallery(dataURL, graphTitle) {
+        function addToGallery(dataURL, graphTitle, meta = {}) {
             const galleryItem = document.createElement('div');
             galleryItem.className = 'gallery-item';
 
@@ -1139,7 +1243,7 @@
 
             const infoDiv = document.createElement('div');
             infoDiv.className = 'gallery-item-info';
-            const now = new Date();
+            const now = meta.time || new Date();
             infoDiv.textContent = `${graphTitle} - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
 
             const actionsDiv = document.createElement('div');
@@ -1162,6 +1266,7 @@
             deleteBtn.textContent = '삭제';
             deleteBtn.addEventListener('click', () => {
                 galleryItem.remove();
+                dbDelete('images', meta.dbId);
                 updatePlaceholders(ui.galleryContainer);
                 updateCompareButton();
             });
@@ -1178,7 +1283,7 @@
             appendAndReveal(c, galleryItem);
         }
 
-        function addVideoToGallery(videoURL) {
+        function addVideoToGallery(videoURL, meta = {}) {
             const galleryItem = document.createElement('div');
             galleryItem.className = 'gallery-item';
 
@@ -1191,7 +1296,7 @@
 
             const infoDiv = document.createElement('div');
             infoDiv.className = 'gallery-item-info';
-            const now = new Date();
+            const now = meta.time || new Date();
             infoDiv.textContent = `녹화 - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
 
             const actionsDiv = document.createElement('div');
@@ -1215,6 +1320,7 @@
             deleteBtn.addEventListener('click', () => {
                 galleryItem.remove();
                 URL.revokeObjectURL(videoURL);
+                dbDelete('videos', meta.dbId);
                 updatePlaceholders(ui.videoGalleryContainer);
             });
 
@@ -1254,14 +1360,16 @@
             mediaRecorder.onstop = () => {
                 const videoBlob = new Blob(videoChunks, { type: 'video/webm' });
                 const videoURL = URL.createObjectURL(videoBlob);
-                addVideoToGallery(videoURL);
+                const time = new Date();
+                dbAdd('videos', { blob: videoBlob, time: time.toISOString() })
+                    .then(id => addVideoToGallery(videoURL, { time, dbId: id }));
                 videoChunks = [];
                 isRecording = false;
                 ui.btnRecord.classList.remove('recording');
                 ui.recordText.textContent = '녹화';
             };
 
-            mediaRecorder.start();
+            mediaRecorder.start(1000); // 1초 단위로 데이터를 모아 강제 종료 시에도 저장 가능하도록
             isRecording = true;
             ui.btnRecord.classList.add('recording');
             ui.recordText.textContent = '중지';
@@ -1296,6 +1404,7 @@
                                 updateAudioParams();
                             }
                         }
+                        saveSettings();
                     }
                 });
             });
@@ -1321,6 +1430,7 @@
                     input.value = slider.value;
                     updateSliderTrack(slider);
                     if (onUpdate) onUpdate();
+                    saveSettings();
                 };
                 slider.addEventListener('input', update);
                 input.addEventListener('change', () => {
@@ -1351,6 +1461,7 @@
                     slider.value = val;
                     updateSliderTrack(slider);
                     if (onUpdate) onUpdate();
+                    saveSettings();
                 };
                 const startRepeating = () => {
                     performUpdate();
@@ -1403,6 +1514,7 @@
                 ui.sliderFreq.value = f;
                 updateSliderTrack(ui.sliderFreq);
                 updateAudioParams();
+                saveSettings();
                 // 선택해도 창은 열린 채 유지 (바깥을 클릭해야 닫힘)
             });
             document.addEventListener('click', (e) => {
@@ -1434,6 +1546,7 @@
                         }
                     }
                     syncOscillators();
+                    saveSettings();
                 });
             });
 
@@ -1445,6 +1558,7 @@
                     ui.waveformButtons.forEach(b => b.classList.toggle('selected', b.id === keep));
                     syncOscillators();
                 }
+                saveSettings();
             });
 
             // '전체 보기' 알약 버튼: 가로 스크롤 한 줄 ↔ 전체 펼침 전환
@@ -1497,14 +1611,26 @@
             updateSliderTrack(ui.sliderFreq);
             updateSliderTrack(ui.sliderAmp);
             updateSliderTrack(ui.sliderPulseRate);
-            updatePulseRateUI(false);
+            updatePulseRateUI(triggerMode === 'pulse');
         }
 
         // --- 초기화 ---
+        loadSettings();          // 저장된 설정 복원 (재생 상태는 저장하지 않으므로 항상 정지로 시작)
         resizeCanvas();
         setupEventListeners();
+        applyRestoredState();
         updatePlaceholders(ui.galleryContainer);
         updatePlaceholders(ui.videoGalleryContainer);
+        restoreGalleries();      // 저장된 이미지/동영상 복원
+
+        // 페이지를 닫거나 벗어날 때: 설정 저장 + 녹화 중이면 강제 종료 후 저장 시도
+        window.addEventListener('pagehide', () => {
+            saveSettings();
+            if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch (e) {}
+            }
+        });
+
         render();
     </script>
 </body>
