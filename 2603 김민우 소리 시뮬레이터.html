@@ -160,9 +160,15 @@
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
             min-width: 220px;
         }
-        /* 빈 상태에서 확보할 대략적인 줄 높이 (항목이 생기면 실제 높이를 따라감) */
-        #gallery-container .placeholder-item,
-        #video-gallery-container .placeholder-item { min-height: 205px; }
+        /* 비교 다운로드 버튼 활성(1~3개 선택) 상태 */
+        .pill-btn.active {
+            background-color: #2563eb; /* blue-600 */
+            border-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .pill-btn.active:hover {
+            background-color: #1d4ed8; /* blue-700 */
+        }
         /* 미디어 표시 영역: 사진과 동영상의 세로 길이를 동일하게 맞춤 */
         .gallery-item video {
             width: 100%;
@@ -375,7 +381,7 @@
             <div class="flex justify-between items-center mt-2 mb-3">
                 <h3 class="text-xl font-semibold text-gray-300 ml-4">이미지</h3>
                 <div class="flex items-center gap-2">
-                    <button id="download-selected-btn" class="pill-btn">비교 다운로드</button>
+                    <button id="download-selected-btn" class="pill-btn">비교 다운로드 (0/3)</button>
                     <button id="expand-images-btn" class="pill-btn">전체 보기</button>
                 </div>
             </div>
@@ -853,9 +859,22 @@
             const needed = Math.max(0, PLACEHOLDER_MIN_SLOTS - realCount);
             for (let i = 0; i < needed; i++) {
                 const ph = document.createElement('div');
-                ph.className = 'placeholder-item';
+                // 실제 항목과 같은 구조(카드+미디어+정보+버튼)로 만들어
+                // 어떤 화면 폭에서도 줄 높이가 정확히 일치하도록 함 (첫 저장 시 밀림 방지)
+                ph.className = 'gallery-item placeholder-item';
+                ph.innerHTML = '<div class="media-box"></div><div class="gallery-item-info">&nbsp;</div><div class="gallery-item-actions"><button>&nbsp;</button></div>';
                 container.appendChild(ph);
             }
+        }
+
+        // --- 비교 다운로드 버튼 상태 관리 (최대 3개 선택) ---
+        const COMPARE_MAX = 3;
+        const compareBtn = document.getElementById('download-selected-btn');
+
+        function updateCompareButton() {
+            const count = ui.galleryContainer.querySelectorAll('.select-box input:checked').length;
+            compareBtn.textContent = `비교 다운로드 (${count}/${COMPARE_MAX})`;
+            compareBtn.classList.toggle('active', count >= 1);
         }
 
         function addToGallery(dataURL, graphTitle) {
@@ -873,6 +892,16 @@
             selectLabel.className = 'select-box';
             const selectCheckbox = document.createElement('input');
             selectCheckbox.type = 'checkbox';
+            selectCheckbox.addEventListener('change', () => {
+                if (selectCheckbox.checked) {
+                    const checkedCount = ui.galleryContainer.querySelectorAll('.select-box input:checked').length;
+                    if (checkedCount > COMPARE_MAX) {
+                        selectCheckbox.checked = false;
+                        alert(`비교는 최대 ${COMPARE_MAX}개까지 선택할 수 있습니다.`);
+                    }
+                }
+                updateCompareButton();
+            });
             selectLabel.appendChild(selectCheckbox);
             mediaBox.appendChild(selectLabel); // 체크박스를 사진 위에 배치
             mediaBox.appendChild(img);
@@ -903,6 +932,7 @@
             deleteBtn.addEventListener('click', () => {
                 galleryItem.remove();
                 updatePlaceholders(ui.galleryContainer);
+                updateCompareButton();
             });
 
             actionsDiv.appendChild(downloadBtn);
