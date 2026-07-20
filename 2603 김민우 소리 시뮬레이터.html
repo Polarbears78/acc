@@ -169,6 +169,8 @@
         /* 상단바: 창이 좁아지면 내용이 줄어들지 않고 가로 스크롤 */
         .header-row {
             overflow-y: hidden; /* 세로 스크롤 방지 */
+            padding-top: 4px;
+            padding-bottom: 6px; /* 슬라이더 알약 썸이 잘리지 않도록 여유 공간 */
         }
         .header-row > * {
             flex-shrink: 0; /* 자식이 찌그러지지 않아야 가로로 넘쳐 스크롤이 생김 */
@@ -389,7 +391,7 @@
     <header class="px-6 py-4 flex-shrink-0 z-50 shadow-md">
         <div class="header-row max-w-7xl mx-auto flex flex-nowrap items-center justify-between gap-4 overflow-x-auto">
 
-            <div class="flex flex-col text-center sm:text-left">
+            <div class="flex flex-col text-left">
                 <h1 class="text-2xl font-bold tracking-tight text-white">파동 시뮬레이터</h1>
                 <p class="text-sm text-gray-400 font-normal tracking-wide mt-0.5">김민우</p>
             </div>
