@@ -375,7 +375,7 @@
             <div class="flex justify-between items-center mt-2 mb-3">
                 <h3 class="text-xl font-semibold text-gray-300 ml-4">이미지</h3>
                 <div class="flex items-center gap-2">
-                    <button id="download-selected-btn" class="pill-btn">선택 다운로드</button>
+                    <button id="download-selected-btn" class="pill-btn">비교 다운로드</button>
                     <button id="expand-images-btn" class="pill-btn">전체 보기</button>
                 </div>
             </div>
@@ -1146,23 +1146,40 @@
             setupExpandToggle(document.getElementById('expand-images-btn'), ui.galleryContainer);
             setupExpandToggle(document.getElementById('expand-videos-btn'), ui.videoGalleryContainer);
 
-            // 체크된 사진들을 한꺼번에 다운로드 (여러 장을 받아 비교 용도)
+            // 체크된 사진들을 세로로 이어 붙인 한 장의 비교 이미지로 저장
             document.getElementById('download-selected-btn').addEventListener('click', () => {
                 const checked = ui.galleryContainer.querySelectorAll('.select-box input:checked');
                 if (checked.length === 0) {
-                    alert('다운로드할 사진을 먼저 체크해 주세요.');
+                    alert('비교할 사진을 먼저 체크해 주세요.');
                     return;
                 }
-                const stamp = Date.now();
-                checked.forEach((cb, i) => {
-                    const img = cb.closest('.gallery-item').querySelector('img');
-                    const a = document.createElement('a');
-                    a.href = img.src;
-                    a.download = `파동_비교_${stamp}_${i + 1}.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                const images = [...checked].map(cb => cb.closest('.gallery-item').querySelector('img'));
+                const gap = 24;
+                const width = Math.max(...images.map(im => im.naturalWidth));
+
+                // 모든 사진을 같은 폭으로 맞춰 세로로 쌓았을 때의 전체 높이 계산
+                const heights = images.map(im => im.naturalHeight * (width / im.naturalWidth));
+                const totalHeight = heights.reduce((s, h) => s + h, 0) + gap * (images.length + 1);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width + gap * 2;
+                canvas.height = totalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#030712';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                let y = gap;
+                images.forEach((im, i) => {
+                    ctx.drawImage(im, gap, y, width, heights[i]);
+                    y += heights[i] + gap;
                 });
+
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = `파동_비교_${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
             });
 
             window.addEventListener('resize', resizeCanvas);
