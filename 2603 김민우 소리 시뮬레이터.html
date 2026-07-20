@@ -193,7 +193,7 @@
             z-index: 70;
             flex-direction: column;
             gap: 4px;
-            background-color: rgba(31, 41, 55, 0.75); /* 반투명 배경 */
+            background-color: rgba(31, 41, 55, 0.5); /* 반투명 배경 */
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(75, 85, 99, 0.7);
@@ -824,7 +824,8 @@
                 // 무작위 오차 같은 움직임: 대부분의 점은 거의 멈춰 있고,
                 // 그때그때 일부 구간만 불규칙하게 살짝 움직임 (세제곱으로 작은 값 억제)
                 const n = smoothNoise(x / 34, alivePhase * 0.8);
-                const jitter = aliveLevel * 2.4 * n * n * n * n * n; // 5제곱: 아주 드문 구간만 살짝 움직임
+                // 진폭이 낮을수록 떨림도 비례해서 약해짐
+                const jitter = aliveLevel * (amp / 100) * 2.4 * n * n * n * n * n; // 5제곱: 아주 드문 구간만 살짝 움직임
                 const y = (height / 2) + pixelAmp * getCombinedWave(wavePhase) + offset + jitter;
                 x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
@@ -844,11 +845,11 @@
                 const dx = amp * edgeFactor * value + (offset * edgeFactor * 0.2);
                 // 입자별 무작위 오차 움직임 (종파는 가장 차분하게)
                 const nx = smoothNoise(i / 6, alivePhase * 0.7 + 50);
-                const jx = aliveLevel * 1.4 * nx * nx * nx * nx * nx;
+                const jx = aliveLevel * (amp / 100) * 1.4 * nx * nx * nx * nx * nx;
                 for (let yOffset = -35; yOffset <= 35; yOffset += 10) {
                     const radius = 2.2 * (1 - Math.abs(yOffset) / 35 * 0.3);
                     const ny = smoothNoise(i / 6 + yOffset * 0.13, alivePhase * 0.6 + 120);
-                    const jy = aliveLevel * 1.0 * ny * ny * ny * ny * ny;
+                    const jy = aliveLevel * (amp / 100) * 1.0 * ny * ny * ny * ny * ny;
                     ctx.beginPath();
                     ctx.arc(xOriginal + dx + jx, (height / 2) + yOffset + jy, radius, 0, 2 * Math.PI);
                     ctx.fill();
