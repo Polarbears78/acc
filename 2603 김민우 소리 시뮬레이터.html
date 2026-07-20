@@ -345,7 +345,7 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <button id="sine" data-wavetype="main" class="waveform-btn selected"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12C6 2 18 2 22 12"></path></svg><span>사인파</span></button>
                                     <button id="square" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12H8V2H16V22H22"></path></svg><span>사각파</span></button>
-                                    <button id="sawtooth" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 22L22 2"></path></svg><span>톱니파</span></button>
+                                    <button id="sawtooth" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 2L22 22"></path></svg><span>톱니파</span></button>
                                     <button id="triangle" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12L7 2L17 22L22 12"></path></svg><span>삼각파</span></button>
                                 </div>
                             </div>
@@ -615,38 +615,20 @@
         }
 
         // --- 파형 값 계산 ---
-        // 합성 파형의 최대값 캐시: 선택 조합이 바뀔 때만 다시 계산
-        let combinedPeakKey = '', combinedPeak = 1;
-        function getCombinedPeak() {
-            const key = selectedWaveforms.slice().sort().join(',');
-            if (key !== combinedPeakKey) {
-                let peak = 0;
-                for (let q = 0; q < Math.PI * 2; q += 0.005) {
-                    let s = 0;
-                    for (const w of selectedWaveforms) s += getWaveValue(w, q);
-                    peak = Math.max(peak, Math.abs(s));
-                }
-                combinedPeak = (peak / selectedWaveforms.length) || 1;
-                combinedPeakKey = key;
-            }
-            return combinedPeak;
-        }
-
         function getCombinedWave(phaseOffset) {
             if (selectedWaveforms.length === 0) return 0;
             let summedValue = 0;
             for (const waveform of selectedWaveforms) {
                 summedValue += getWaveValue(waveform, phaseOffset);
             }
-            // 평균 후 실제 최대값으로 정규화해, 합성 파형도 단일 파형처럼 최대 진폭까지 표시
-            return (summedValue / selectedWaveforms.length) / getCombinedPeak();
+            return summedValue / selectedWaveforms.length;
         }
 
         function getWaveValue(waveform, p) {
             const normalizedPhase = ((p / (2 * Math.PI)) % 1 + 1) % 1;
             switch (waveform) {
                 case 'square': return normalizedPhase < 0.5 ? 1.0 : -1.0;
-                case 'sawtooth': return 2.0 * normalizedPhase - 1.0; // 상승 톱니파 (실제 소리와 동일한 방향)
+                case 'sawtooth': return 1.0 - 2.0 * normalizedPhase; // 하강 톱니파 (원래 방식)
                 case 'triangle':
                     if (normalizedPhase < 0.25) return 4.0 * normalizedPhase;
                     if (normalizedPhase < 0.75) return 2.0 - 4.0 * normalizedPhase;
@@ -683,8 +665,7 @@
             ctx.beginPath();
             for (let x = 0; x < width; x++) {
                 const wavePhase = k * (x - width / 2) + p;
-                // 캔버스 y축은 아래로 갈수록 커지므로 부호를 뒤집어 양(+)의 변위가 위로 그려지게 함
-                const y = (height / 2) - pixelAmp * getCombinedWave(wavePhase) + offset;
+                const y = (height / 2) + pixelAmp * getCombinedWave(wavePhase) + offset;
                 x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
             ctx.stroke();
