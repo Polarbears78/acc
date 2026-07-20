@@ -193,8 +193,10 @@
             z-index: 70;
             flex-direction: column;
             gap: 4px;
-            background-color: rgb(31 41 55); /* gray-800 */
-            border: 1px solid rgb(75 85 99);
+            background-color: rgba(31, 41, 55, 0.75); /* 반투명 배경 */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(75, 85, 99, 0.7);
             border-radius: 0.5rem;
             padding: 6px;
             width: max-content;
@@ -234,10 +236,6 @@
             cursor: pointer;
             white-space: nowrap;
             transition: background-color 0.15s ease;
-        }
-        .note-menu button:hover {
-            background-color: rgb(30 58 138); /* blue-900 */
-            color: white;
         }
         /* 파형 중첩 토글 스위치 */
         .switch {
@@ -1358,7 +1356,7 @@
                 ui.sliderFreq.value = f;
                 updateSliderTrack(ui.sliderFreq);
                 updateAudioParams();
-                noteMenu.classList.remove('open');
+                // 선택해도 창은 열린 채 유지 (바깥을 클릭해야 닫힘)
             });
             document.addEventListener('click', (e) => {
                 if (!noteMenu.contains(e.target) && e.target !== noteMenuBtn) {
