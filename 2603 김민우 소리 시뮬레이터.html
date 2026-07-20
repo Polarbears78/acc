@@ -9,8 +9,8 @@
     <style>
         /* Webkit 브라우저용 스크롤바 스타일 */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px; /* 가로 스크롤 막대 */
+            width: 4px;  /* 세로 스크롤 막대 (저장소 가로 막대와 동일 두께) */
+            height: 4px; /* 가로 스크롤 막대 */
         }
         ::-webkit-scrollbar-track {
             background: #1a202c;
@@ -43,7 +43,7 @@
             -moz-appearance: textfield;
         }
         /* 버튼 공통 스타일 */
-        .waveform-btn, .trigger-mode-btn, .capture-btn, .more-btn, .record-btn {
+        .waveform-btn, .trigger-mode-btn, .more-btn, .record-btn {
             font-size: 0.875rem; /* text-sm */
             font-weight: 600; /* font-semibold */
             color: rgb(209 213 219); /* text-gray-300 */
@@ -68,17 +68,13 @@
             width: 4.5rem; /* w-18 */
             height: 2.5rem; /* h-10 */
         }
-        .capture-btn {
-            height: 2.5rem; /* h-10 */
-            padding: 0 1rem;
-        }
         .record-btn {
             height: 4.5rem;
             width: 4.5rem;
             flex-direction: column;
             gap: 0.25rem;
         }
-        .waveform-btn:hover, .trigger-mode-btn:hover, .capture-btn:hover, .more-btn:hover, .record-btn:hover {
+        .waveform-btn:hover, .trigger-mode-btn:hover, .more-btn:hover, .record-btn:hover {
             background-color: rgb(75 85 99);
         }
         .waveform-btn.selected, .trigger-mode-btn.selected {
@@ -157,9 +153,6 @@
             overflow-x: auto;
             padding-bottom: 0.5rem; /* 스크롤바 자리 */
             scroll-snap-type: x proximity;
-        }
-        .gallery-row::-webkit-scrollbar {
-            height: 4px; /* 갤러리 가로 스크롤 막대는 더 얇게 */
         }
         .gallery-row > * {
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
@@ -304,11 +297,12 @@
     </header>
 
     <!-- 메인 컨텐츠 -->
-    <main class="flex-1 overflow-y-auto w-full max-w-7xl mx-auto p-6 flex flex-col gap-6 items-center">
+    <main class="flex-1 overflow-y-auto w-full">
+        <div class="max-w-7xl mx-auto p-6 flex flex-col gap-6 items-center">
         <div class="w-full bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-lg relative">
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-lg font-semibold text-cyan-400 ml-4">횡파</h2>
-                <button id="capture-transverse-btn" class="capture-btn">
+                <button id="capture-transverse-btn" class="pill-btn">
                     <span>자동 스크린샷</span>
                 </button>
             </div>
@@ -317,7 +311,7 @@
         <div class="w-full bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-lg relative">
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-lg font-semibold text-rose-500 ml-4">종파(소밀파)</h2>
-                <button id="capture-longitudinal-btn" class="capture-btn">
+                <button id="capture-longitudinal-btn" class="pill-btn">
                     <span>자동 스크린샷</span>
                 </button>
             </div>
@@ -345,6 +339,7 @@
                 <!-- 캡처된 동영상이 여기에 추가됩니다. -->
             </div>
         </section>
+        </div>
     </main>
 
     <script>
@@ -634,13 +629,11 @@
             [ctxTransverse, ctxLongitudinal].forEach(ctx => {
                 ctx.clearRect(0, 0, canvasWidth, canvasHeight);
                 ctx.beginPath();
-                ctx.setLineDash([5, 5]);
                 ctx.strokeStyle = '#4a5568';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 0.5;
                 ctx.moveTo(0, canvasHeight / 2);
                 ctx.lineTo(canvasWidth, canvasHeight / 2);
                 ctx.stroke();
-                ctx.setLineDash([]);
             });
 
             let targetAmp;
@@ -730,13 +723,11 @@
             waveCtx.fillStyle = '#111827';
             waveCtx.fillRect(0, 0, sourceWidth, sourceHeight);
             waveCtx.beginPath();
-            waveCtx.setLineDash([5, 5]);
             waveCtx.strokeStyle = '#4a5568';
-            waveCtx.lineWidth = 1;
+            waveCtx.lineWidth = 0.5;
             waveCtx.moveTo(0, sourceHeight / 2);
             waveCtx.lineTo(sourceWidth, sourceHeight / 2);
             waveCtx.stroke();
-            waveCtx.setLineDash([]);
 
             const forcedAmp = parseFloat(ui.sliderAmp.value);
             const k = (parseFloat(ui.sliderFreq.value) / 300) * 0.018;
