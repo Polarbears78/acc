@@ -152,7 +152,6 @@
             gap: 1.5rem;
             overflow-x: scroll; /* 스크롤바 공간을 항상 확보해 항목이 늘어나도 아래로 밀리지 않음 */
             padding-bottom: 0.5rem;
-            scroll-snap-type: x proximity;
         }
         .gallery-row::-webkit-scrollbar-track {
             background: transparent; /* 스크롤할 내용이 없을 땐 막대가 보이지 않도록 */
@@ -160,15 +159,28 @@
         .gallery-row > * {
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
             min-width: 220px;
-            height: 240px; /* 항목 유무와 무관하게 줄 높이 고정 (레이아웃 밀림 방지) */
-            scroll-snap-align: start;
         }
-        /* 고정 높이 안에서 미디어가 남는 공간을 채우도록 */
-        .gallery-item img, .gallery-item video {
-            width: 100%;
-            flex: 1 1 0;
-            min-height: 0;
-            object-fit: contain;
+        /* 빈 상태에서 확보할 대략적인 줄 높이 (항목이 생기면 실제 높이를 따라감) */
+        #gallery-container .placeholder-item { min-height: 180px; }
+        #video-gallery-container .placeholder-item { min-height: 205px; }
+        /* 이미지 선택용 체크박스 */
+        .select-box {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #9ca3af; /* gray-400 */
+            cursor: pointer;
+        }
+        .select-box input[type=checkbox] {
+            width: 1rem;
+            height: 1rem;
+            accent-color: #3b82f6; /* blue-500 */
+            cursor: pointer;
+        }
+        .gallery-item:has(.select-box input:checked) {
+            border-color: #3b82f6;
         }
         /* '전체 보기' 상태: 줄바꿈하며 전부 표시 */
         .gallery-row.expanded {
@@ -817,6 +829,14 @@
             img.src = dataURL;
             img.alt = `${graphTitle} 캡처 이미지`;
 
+            // 이미지 아래 남는 공간에 선택용 체크박스
+            const selectLabel = document.createElement('label');
+            selectLabel.className = 'select-box';
+            const selectCheckbox = document.createElement('input');
+            selectCheckbox.type = 'checkbox';
+            selectLabel.appendChild(selectCheckbox);
+            selectLabel.appendChild(document.createTextNode('선택'));
+
             const infoDiv = document.createElement('div');
             infoDiv.className = 'gallery-item-info';
             const now = new Date();
@@ -848,6 +868,7 @@
             actionsDiv.appendChild(downloadBtn);
             actionsDiv.appendChild(deleteBtn);
             galleryItem.appendChild(img);
+            galleryItem.appendChild(selectLabel);
             galleryItem.appendChild(infoDiv);
             galleryItem.appendChild(actionsDiv);
 
