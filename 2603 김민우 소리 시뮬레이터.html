@@ -529,6 +529,7 @@
         let pulseIntervalId = null;
         let selectedWaveforms = ['sine'];
         let phase = 0, visualAmp = 0, visualPulsePhase = 0;
+        let alivePhase = 0, aliveLevel = 0; // 재생 중 제자리 떨림 효과용
         let animationFrameId;
 
         let isRecording = false;
@@ -829,10 +830,11 @@
 
             visualAmp += (targetAmp - visualAmp) * 0.3;
 
-            const aliveOffset = 0;
+            // 재생 중일 때만 파형이 제자리에서 조금씩 떨림 (정지하면 서서히 잦아듦)
+            alivePhase += 0.2;
+            aliveLevel += ((isPlaying ? 1 : 0) - aliveLevel) * 0.08;
+            const aliveOffset = Math.sin(alivePhase) * 2.5 * aliveLevel;
             const k = (parseFloat(ui.sliderFreq.value) / 300) * 0.018;
-            // 재생 중일 때 파동이 오른쪽으로 진행 (정지하면 멈춤)
-            if (isPlaying) phase -= 0.06;
 
             drawTransverseWave(ctxTransverse, canvasWidth, canvasHeight, visualAmp, k, phase, aliveOffset);
             drawLongitudinalWave(ctxLongitudinal, canvasWidth, canvasHeight, visualAmp, k, phase, aliveOffset);
