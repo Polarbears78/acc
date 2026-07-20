@@ -203,17 +203,25 @@
         .note-menu.open {
             display: flex;
         }
-        .note-row {
+        .note-set {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .note-set + .note-set {
+            margin-top: 4px;
+            padding-top: 6px;
+            border-top: 1px solid rgb(55 65 81); /* 세트 사이 구분선 */
+        }
+        .note-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 윗줄 도레미파, 아랫줄 솔라시 */
             gap: 4px;
         }
         .note-octave {
             font-size: 10px;
             font-weight: 600;
             color: #9ca3af; /* gray-400 */
-            width: 42px;
-            flex-shrink: 0;
         }
         .note-menu button {
             padding: 4px 8px;
@@ -409,9 +417,27 @@
                                 <span class="text-gray-400">진동수</span>
                                 <button id="noteMenuBtn" class="note-icon-btn" title="음계로 진동수 설정">♪</button>
                                 <div id="noteMenu" class="note-menu">
-                                    <div class="note-row"><span class="note-octave">3옥타브</span><button data-freq="131" title="131 Hz">도</button><button data-freq="147" title="147 Hz">레</button><button data-freq="165" title="165 Hz">미</button><button data-freq="175" title="175 Hz">파</button><button data-freq="196" title="196 Hz">솔</button><button data-freq="220" title="220 Hz">라</button><button data-freq="247" title="247 Hz">시</button></div>
-                                    <div class="note-row"><span class="note-octave">4옥타브</span><button data-freq="262" title="262 Hz">도</button><button data-freq="294" title="294 Hz">레</button><button data-freq="330" title="330 Hz">미</button><button data-freq="349" title="349 Hz">파</button><button data-freq="392" title="392 Hz">솔</button><button data-freq="440" title="440 Hz">라</button><button data-freq="494" title="494 Hz">시</button></div>
-                                    <div class="note-row"><span class="note-octave">5옥타브</span><button data-freq="523" title="523 Hz">도</button><button data-freq="587" title="587 Hz">레</button><button data-freq="659" title="659 Hz">미</button><button data-freq="698" title="698 Hz">파</button><button data-freq="784" title="784 Hz">솔</button><button data-freq="880" title="880 Hz">라</button><button data-freq="988" title="988 Hz">시</button></div>
+                                    <div class="note-set">
+                                        <span class="note-octave">3옥타브</span>
+                                        <div class="note-grid">
+                                            <button data-freq="131">도 (131)</button><button data-freq="147">레 (147)</button><button data-freq="165">미 (165)</button><button data-freq="175">파 (175)</button>
+                                            <button data-freq="196">솔 (196)</button><button data-freq="220">라 (220)</button><button data-freq="247">시 (247)</button>
+                                        </div>
+                                    </div>
+                                    <div class="note-set">
+                                        <span class="note-octave">4옥타브</span>
+                                        <div class="note-grid">
+                                            <button data-freq="262">도 (262)</button><button data-freq="294">레 (294)</button><button data-freq="330">미 (330)</button><button data-freq="349">파 (349)</button>
+                                            <button data-freq="392">솔 (392)</button><button data-freq="440">라 (440)</button><button data-freq="494">시 (494)</button>
+                                        </div>
+                                    </div>
+                                    <div class="note-set">
+                                        <span class="note-octave">5옥타브</span>
+                                        <div class="note-grid">
+                                            <button data-freq="523">도 (523)</button><button data-freq="587">레 (587)</button><button data-freq="659">미 (659)</button><button data-freq="698">파 (698)</button>
+                                            <button data-freq="784">솔 (784)</button><button data-freq="880">라 (880)</button><button data-freq="988">시 (988)</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="flex items-center gap-0.5">
