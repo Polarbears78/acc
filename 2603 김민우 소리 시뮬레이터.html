@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>파동 시뮬레이터 - 김민우</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Webkit 브라우저용 스크롤바 스타일 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a202c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        /* 슬라이더 썸 커스텀 스타일 */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px; /* 알약 형태로 변경 (더 짧게) */
+            height: 12px; /* 알약 형태로 변경 (더 두껍게) */
+            border-radius: 9999px; /* 알약 형태로 변경 */
+            background: white; /* 흰색 */
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        /* 숫자 입력 필드 화살표 숨기기 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        /* 버튼 공통 스타일 */
+        .waveform-btn, .trigger-mode-btn, .capture-btn, .more-btn, .record-btn {
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 600; /* font-semibold */
+            color: rgb(209 213 219); /* text-gray-300 */
+            background-color: rgb(55 65 81); /* bg-gray-700 */
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid rgb(75 85 99); /* border border-gray-600 */
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0 0.75rem;
+        }
+        .waveform-btn {
+            width: 6rem; /* w-24 */
+            height: 2rem; /* h-8 */
+            justify-content: flex-start;
+            gap: 0.5rem;
+            white-space: nowrap; /* 줄바꿈 방지 */
+        }
+        .trigger-mode-btn {
+            width: 4.5rem; /* w-18 */
+            height: 2.5rem; /* h-10 */
+        }
+        .capture-btn {
+            height: 2.5rem; /* h-10 */
+            padding: 0 1rem;
+        }
+        .record-btn {
+            height: 4.5rem;
+            width: 4.5rem;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .waveform-btn:hover, .trigger-mode-btn:hover, .capture-btn:hover, .more-btn:hover, .record-btn:hover {
+            background-color: rgb(75 85 99);
+        }
+        .waveform-btn.selected, .trigger-mode-btn.selected {
+            background-color: rgb(30 58 138); /* blue-900 */
+            color: white;
+            border: 1px solid rgb(29 78 216); /* blue-700 */
+        }
+        .record-btn.recording {
+            background-color: #b91c1c; /* red-700 */
+            border-color: #991b1b; /* red-800 */
+            color: white;
+        }
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+        .record-btn.recording .record-text {
+            animation: blink 1s infinite;
+        }
+        .control-group[disabled] {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .gallery-item {
+            background-color: #1a202c; /* bg-gray-900 */
+            border: 1px solid #2d3748; /* border-gray-800 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .gallery-item img, .gallery-item video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.25rem;
+            border: 1px solid #4a5568;
+        }
+        .gallery-item-info {
+            font-size: 0.875rem; /* text-sm */
+            color: #cbd5e0; /* text-gray-300 */
+        }
+        .gallery-item-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .gallery-item-actions button {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.15s ease;
+        }
+        .gallery-item-actions .download-btn {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .gallery-item-actions .download-btn:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+        .gallery-item-actions .delete-btn {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+        }
+        .gallery-item-actions .delete-btn:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        /* 헤더 반투명 효과 */
+        header {
+            position: sticky; /* 스크롤 시 상단에 고정 */
+            top: 0;
+            isolation: isolate; /* z-index 컨텍스트 분리 */
+        }
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            z-index: -1; /* 헤더 내용물 뒤로 보내기 */
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 h-screen flex flex-col overflow-hidden select-none">
+
+    <!-- 상단 헤더 -->
+    <header class="px-6 py-4 flex-shrink-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-center sm:justify-between gap-4">
+
+            <div class="flex flex-col text-center sm:text-left">
+                <h1 class="text-2xl font-bold tracking-tight text-white">파동 시뮬레이터</h1>
+                <p class="text-sm text-gray-400 font-normal tracking-wide mt-0.5">김민우</p>
+            </div>
+
+            <div class="flex items-center gap-4 sm:gap-6">
+
+                <div class="flex items-end gap-2">
+                    <div class="flex flex-col items-center gap-2">
+                        <button id="btnToggle" class="w-14 h-14 rounded-md bg-red-900 border border-red-700 text-white transition-all duration-200 shadow-lg flex items-center justify-center flex-shrink-0" title="소리 시작/정지">
+                            <svg id="playIcon" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+                            <svg id="stopIcon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+                        </button>
+                        <button id="btnMute" class="w-14 h-5 rounded-md bg-gray-700 border border-gray-600 text-white transition-colors duration-200 flex items-center justify-center" title="음소거">
+                            <svg id="speakerOnIcon" class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"></path></svg>
+                            <svg id="speakerOffIcon" class="w-4 h-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l-2.25 2.25M19.5 12l2.25-2.25M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <button id="mode-continuous" class="trigger-mode-btn selected">연속</button>
+                        <button id="mode-pulse" class="trigger-mode-btn">펄스</button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-col w-72 sm:w-80 control-group">
+                        <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                            <span class="text-gray-400 w-12">진동수</span>
+                            <div class="flex items-center gap-0.5">
+                                <input type="number" id="freqInput" min="1" max="20000" value="250" class="bg-gray-800 text-blue-400 font-mono w-14 text-right rounded-md px-2 py-0.5 border border-gray-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex flex-col"><button id="freqUp" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-t-md leading-none">▲</button><button id="freqDown" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-b-md leading-none">▼</button></div>
+                                <span class="text-gray-400 font-mono">Hz</span>
+                            </div>
+                        </div>
+                        <input type="range" id="sliderFreq" min="1" max="20000" value="250" step="1" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <div class="flex flex-col w-72 sm:w-80 control-group">
+                        <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                            <span class="text-gray-400 w-12">진폭</span>
+                            <div class="flex items-center gap-0.5">
+                                <input type="number" id="ampInput" min="0" max="100" value="50" class="bg-gray-800 text-blue-400 font-mono w-14 text-right rounded-md px-2 py-0.5 border border-gray-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex flex-col"><button id="ampUp" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-t-md leading-none">▲</button><button id="ampDown" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-b-md leading-none">▼</button></div>
+                                <span class="text-gray-400 font-mono">%&nbsp;</span>
+                            </div>
+                        </div>
+                        <input type="range" id="sliderAmp" min="0" max="100" value="50" step="1" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <div id="pulse-rate-control" class="flex flex-col w-72 sm:w-80 control-group">
+                        <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                            <span class="text-gray-400 w-12">펄스 속도</span>
+                            <div class="flex items-center gap-0.5">
+                                <input type="number" id="pulseRateInput" min="0.5" max="10" step="0.1" value="2" class="bg-gray-800 text-blue-400 font-mono w-14 text-right rounded-md px-2 py-0.5 border border-gray-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex flex-col"><button id="pulseRateUp" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-t-md leading-none">▲</button><button id="pulseRateDown" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-b-md leading-none">▼</button></div>
+                                <span class="text-gray-400 font-mono">Hz</span>
+                            </div>
+                        </div>
+                        <input type="range" id="sliderPulseRate" min="0.5" max="10" step="0.1" value="2" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-gray-400 mb-1">파형 (주요파형)</span>
+                        <div class="flex items-stretch gap-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="sine" data-wavetype="main" class="waveform-btn selected"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12C6 2 18 2 22 12"></path></svg><span>사인파</span></button>
+                                <button id="square" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12H8V2H16V22H22"></path></svg><span>사각파</span></button>
+                                <button id="sawtooth" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 2L22 22"></path></svg><span>톱니파</span></button>
+                                <button id="triangle" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12L7 2L17 22L22 12"></path></svg><span>삼각파</span></button>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="btnRecord" class="record-btn w-20 h-10">
+                        <span class="record-text">녹화</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="flex-1 overflow-y-auto w-full max-w-7xl mx-auto p-6 flex flex-col gap-6 items-center">
+        <div class="w-full bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-lg relative">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-semibold text-cyan-400 ml-4">횡파</h2>
+                <button id="capture-transverse-btn" class="capture-btn">
+                    <span>자동 스크린샷</span>
+                </button>
+            </div>
+            <canvas id="transverseCanvas" class="w-full h-[200px]"></canvas>
+        </div>
+        <div class="w-full bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-lg relative">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-semibold text-rose-500 ml-4">종파(소밀파)</h2>
+                <button id="capture-longitudinal-btn" class="capture-btn">
+                    <span>자동 스크린샷</span>
+                </button>
+            </div>
+            <canvas id="longitudinalCanvas" class="w-full h-[200px]"></canvas>
+        </div>
+
+        <canvas id="compositingCanvas" class="hidden"></canvas>
+
+        <section id="storage-section" class="w-full max-w-7xl mx-auto p-6">
+            <h2 class="text-2xl font-bold text-white mb-4">저장소</h2>
+
+            <h3 class="text-xl font-semibold text-gray-300 mt-6 mb-3">이미지</h3>
+            <div id="gallery-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- 캡처된 이미지가 여기에 추가됩니다. -->
+            </div>
+
+            <h3 class="text-xl font-semibold text-gray-300 mt-8 mb-3">동영상</h3>
+            <div id="video-gallery-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- 캡처된 동영상이 여기에 추가됩니다. -->
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- 상태 변수 ---
+        let audioCtx = null, masterGain = null;
+        const oscillators = {}; // 동적 관리를 위해 빈 객체로 시작
+
+        let isPlaying = false;
+        let isMuted = false;
+        let triggerMode = 'continuous';
+        let pulseIntervalId = null;
+        let selectedWaveforms = ['sine'];
+        let phase = 0, visualAmp = 0, visualPulsePhase = 0;
+        let animationFrameId;
+
+        let isRecording = false;
+        let mediaRecorder = null;
+        let videoChunks = [];
+        let mediaStreamDestination = null; // 녹화용 오디오 스트림
+        let recordingGain = null; // 음소거와 무관하게 녹화 소리를 담는 게인
+
+        // --- DOM 요소 ---
+        const ui = {
+            btnToggle: document.getElementById('btnToggle'),
+            playIcon: document.getElementById('playIcon'),
+            stopIcon: document.getElementById('stopIcon'),
+            btnMute: document.getElementById('btnMute'),
+            speakerOnIcon: document.getElementById('speakerOnIcon'),
+            speakerOffIcon: document.getElementById('speakerOffIcon'),
+            triggerModeButtons: document.querySelectorAll('.trigger-mode-btn'),
+            sliderFreq: document.getElementById('sliderFreq'),
+            freqInput: document.getElementById('freqInput'),
+            sliderAmp: document.getElementById('sliderAmp'),
+            ampInput: document.getElementById('ampInput'),
+            pulseRateControl: document.getElementById('pulse-rate-control'),
+            sliderPulseRate: document.getElementById('sliderPulseRate'),
+            pulseRateInput: document.getElementById('pulseRateInput'),
+            waveformButtons: document.querySelectorAll('.waveform-btn'),
+            captureTransverseBtn: document.getElementById('capture-transverse-btn'),
+            captureLongitudinalBtn: document.getElementById('capture-longitudinal-btn'),
+            galleryContainer: document.getElementById('gallery-container'),
+            videoGalleryContainer: document.getElementById('video-gallery-container'),
+            transverseCanvas: document.getElementById('transverseCanvas'),
+            longitudinalCanvas: document.getElementById('longitudinalCanvas'),
+            compositingCanvas: document.getElementById('compositingCanvas'),
+            btnRecord: document.getElementById('btnRecord'),
+            recordText: document.querySelector('.record-text'),
+        };
+        const ctxTransverse = ui.transverseCanvas.getContext('2d');
+        const ctxLongitudinal = ui.longitudinalCanvas.getContext('2d');
+        const ctxCompositing = ui.compositingCanvas.getContext('2d');
+
+        // --- 오디오 초기화 ---
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // 스피커 출력 경로 (음소거/재생 상태의 영향을 받음)
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            masterGain.connect(audioCtx.destination);
+
+            // 녹화 출력 경로 (음소거의 영향을 받지 않음)
+            mediaStreamDestination = audioCtx.createMediaStreamDestination();
+            recordingGain = audioCtx.createGain();
+            recordingGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            recordingGain.connect(mediaStreamDestination);
+
+            syncOscillators();
+        }
+
+        function syncOscillators() {
+            if (!audioCtx) return;
+            const freq = parseFloat(ui.sliderFreq.value);
+
+            for (const waveType of selectedWaveforms) {
+                if (!oscillators[waveType]) {
+                    const osc = audioCtx.createOscillator();
+                    osc.type = waveType;
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    const gainNode = audioCtx.createGain();
+                    gainNode.gain.setValueAtTime(1 / Math.max(1, selectedWaveforms.length), audioCtx.currentTime);
+                    osc.connect(gainNode);
+                    gainNode.connect(masterGain);    // 스피커 경로
+                    gainNode.connect(recordingGain); // 녹화 경로
+                    osc.start();
+                    oscillators[waveType] = { osc, gainNode };
+                }
+            }
+
+            for (const waveType in oscillators) {
+                if (!selectedWaveforms.includes(waveType)) {
+                    const { osc, gainNode } = oscillators[waveType];
+                    gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                    osc.stop(audioCtx.currentTime + 0.1);
+                    setTimeout(() => {
+                        osc.disconnect();
+                        gainNode.disconnect();
+                    }, 200);
+                    delete oscillators[waveType];
+                }
+            }
+
+            // 파형 수가 바뀌면 합산 음량이 커지지 않도록 개별 게인을 다시 배분
+            const perOscGain = 1 / Math.max(1, selectedWaveforms.length);
+            for (const { gainNode } of Object.values(oscillators)) {
+                gainNode.gain.setTargetAtTime(perOscGain, audioCtx.currentTime, 0.02);
+            }
+            updateAudioParams();
+        }
+
+        // --- 오디오 파라미터 업데이트 ---
+        function updateAudioParams() {
+            if (!audioCtx) return;
+
+            const freq = parseFloat(ui.sliderFreq.value);
+            for (const { osc } of Object.values(oscillators)) {
+                osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
+            }
+
+            if (triggerMode === 'continuous') {
+                const baseGain = isPlaying ? (parseFloat(ui.sliderAmp.value) / 100) * 0.25 : 0;
+                masterGain.gain.setTargetAtTime(isMuted ? 0 : baseGain, audioCtx.currentTime, 0.05);
+                recordingGain.gain.setTargetAtTime(baseGain, audioCtx.currentTime, 0.05);
+            }
+        }
+
+        function triggerPulse() {
+            if (!audioCtx) return;
+            const pulseGain = (parseFloat(ui.sliderAmp.value) / 100) * 0.25;
+
+            // 녹화 경로: 음소거와 무관하게 펄스를 기록
+            recordingGain.gain.cancelScheduledValues(audioCtx.currentTime);
+            recordingGain.gain.setTargetAtTime(pulseGain, audioCtx.currentTime, 0.01);
+            recordingGain.gain.setTargetAtTime(0, audioCtx.currentTime + 0.1, 0.08);
+
+            // 스피커 경로
+            masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+            if (isMuted) {
+                masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+            } else {
+                masterGain.gain.setTargetAtTime(pulseGain, audioCtx.currentTime, 0.01);
+                masterGain.gain.setTargetAtTime(0, audioCtx.currentTime + 0.1, 0.08);
+            }
+        }
+
+        function stopPulse() {
+            if (pulseIntervalId) {
+                clearInterval(pulseIntervalId);
+                pulseIntervalId = null;
+            }
+        }
+
+        function startPulse() {
+            stopPulse();
+            triggerPulse();
+            const pulseRateHz = parseFloat(ui.pulseRateInput.value);
+            const intervalMs = 1000 / pulseRateHz;
+            pulseIntervalId = setInterval(triggerPulse, intervalMs);
+        }
+
+        // --- 재생/정지 핸들러 ---
+        function handlePlay() {
+            isPlaying = !isPlaying;
+            if (isPlaying && !audioCtx) initAudio();
+
+            if (isPlaying) {
+                if (triggerMode === 'pulse') {
+                    startPulse();
+                } else {
+                    updateAudioParams();
+                }
+            } else {
+                stopPulse();
+                if (audioCtx) {
+                    masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                    recordingGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                }
+                visualPulsePhase = 0;
+            }
+
+            ui.btnToggle.classList.toggle('bg-green-900', isPlaying);
+            ui.btnToggle.classList.toggle('border-green-700', isPlaying);
+            ui.btnToggle.classList.toggle('bg-red-900', !isPlaying);
+            ui.btnToggle.classList.toggle('border-red-700', !isPlaying);
+            ui.playIcon.classList.toggle('hidden', isPlaying);
+            ui.stopIcon.classList.toggle('hidden', !isPlaying);
+        }
+
+        // --- 음소거 토글 ---
+        function toggleMute() {
+            isMuted = !isMuted;
+            ui.speakerOnIcon.classList.toggle('hidden', isMuted);
+            ui.speakerOffIcon.classList.toggle('hidden', !isMuted);
+
+            if (isPlaying && audioCtx) {
+                if (triggerMode === 'continuous') {
+                    updateAudioParams();
+                } else if (isMuted) {
+                    masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+                }
+            }
+        }
+
+        // --- 파형 값 계산 ---
+        function getCombinedWave(phaseOffset) {
+            if (selectedWaveforms.length === 0) return 0;
+            let summedValue = 0;
+            for (const waveform of selectedWaveforms) {
+                summedValue += getWaveValue(waveform, phaseOffset);
+            }
+            return summedValue / selectedWaveforms.length;
+        }
+
+        function getWaveValue(waveform, p) {
+            const normalizedPhase = ((p / (2 * Math.PI)) % 1 + 1) % 1;
+            switch (waveform) {
+                case 'square': return normalizedPhase < 0.5 ? 1.0 : -1.0;
+                case 'sawtooth': return 1.0 - 2.0 * normalizedPhase;
+                case 'triangle':
+                    if (normalizedPhase < 0.25) return 4.0 * normalizedPhase;
+                    if (normalizedPhase < 0.75) return 2.0 - 4.0 * normalizedPhase;
+                    return -4.0 + 4.0 * normalizedPhase;
+                case 'sine':
+                default: return Math.sin(p);
+            }
+        }
+
+        // --- 캔버스 리사이즈 및 DPI 조정 ---
+        function resizeCanvas() {
+            [ui.transverseCanvas, ui.longitudinalCanvas].forEach(canvas => {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                canvas.getContext('2d').scale(dpr, dpr);
+            });
+            // 녹화 합성용 캔버스 (두 그래프를 좌우로 배치)
+            const rect = ui.transverseCanvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            ui.compositingCanvas.width = rect.width * 2 * dpr;
+            ui.compositingCanvas.height = rect.height * dpr;
+            ui.compositingCanvas.getContext('2d').scale(dpr, dpr);
+        }
+
+        // --- 렌더링 로직 ---
+        function drawTransverseWave(ctx, width, height, amp, k, p, offset) {
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let x = 0; x < width; x++) {
+                const wavePhase = k * (x - width / 2) + p;
+                const y = (height / 2) + amp * getCombinedWave(wavePhase) + offset;
+                x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        function drawLongitudinalWave(ctx, width, height, amp, k, p, offset) {
+            ctx.fillStyle = '#f43f5e';
+            const numParticles = 100;
+            const spacing = width / numParticles;
+            for (let i = 0; i <= numParticles; i++) {
+                const xOriginal = i * spacing;
+                const wavePhase = k * (xOriginal - width / 2) + p;
+                const value = getCombinedWave(wavePhase);
+                const edgeFactor = Math.sin((i / numParticles) * Math.PI);
+                const dx = amp * edgeFactor * value + (offset * edgeFactor * 0.2);
+                for (let yOffset = -35; yOffset <= 35; yOffset += 12) {
+                    const radius = 4.5 * (1 - Math.abs(yOffset) / 35 * 0.4);
+                    ctx.beginPath();
+                    ctx.arc(xOriginal + dx, (height / 2) + yOffset, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function render() {
+            const canvasWidth = ui.transverseCanvas.getBoundingClientRect().width;
+            const canvasHeight = ui.transverseCanvas.getBoundingClientRect().height;
+
+            [ctxTransverse, ctxLongitudinal].forEach(ctx => {
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = '#4a5568';
+                ctx.lineWidth = 1;
+                ctx.moveTo(0, canvasHeight / 2);
+                ctx.lineTo(canvasWidth, canvasHeight / 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            });
+
+            let targetAmp;
+            const maxAmp = isPlaying ? parseFloat(ui.sliderAmp.value) : 0;
+
+            if (isPlaying && triggerMode === 'pulse') {
+                const pulseRateHz = parseFloat(ui.pulseRateInput.value);
+                visualPulsePhase += (pulseRateHz * 2 * Math.PI) / 60;
+                const pulseModulation = Math.pow((Math.sin(visualPulsePhase) + 1) / 2, 2);
+                targetAmp = maxAmp * pulseModulation;
+            } else {
+                targetAmp = maxAmp;
+            }
+
+            visualAmp += (targetAmp - visualAmp) * 0.3;
+
+            const aliveOffset = 0;
+            const k = (parseFloat(ui.sliderFreq.value) / 300) * 0.018;
+
+            drawTransverseWave(ctxTransverse, canvasWidth, canvasHeight, visualAmp, k, phase, aliveOffset);
+            drawLongitudinalWave(ctxLongitudinal, canvasWidth, canvasHeight, visualAmp, k, phase, aliveOffset);
+
+            // 녹화용 합성 캔버스에 두 그래프를 나란히 그림
+            if (isRecording) {
+                ctxCompositing.fillStyle = '#030712';
+                ctxCompositing.fillRect(0, 0, canvasWidth * 2, canvasHeight);
+                ctxCompositing.drawImage(ui.transverseCanvas, 0, 0, canvasWidth, canvasHeight);
+                ctxCompositing.drawImage(ui.longitudinalCanvas, canvasWidth, 0, canvasWidth, canvasHeight);
+            }
+
+            animationFrameId = requestAnimationFrame(render);
+        }
+
+        // --- 스크린샷 기능 ---
+        function captureAsContinuous(sourceCanvas, graphTitle) {
+            const dpr = window.devicePixelRatio || 1;
+            const sourceWidth = sourceCanvas.getBoundingClientRect().width;
+            const sourceHeight = sourceCanvas.getBoundingClientRect().height;
+
+            const waveCanvas = document.createElement('canvas');
+            const waveCtx = waveCanvas.getContext('2d');
+            waveCanvas.width = sourceWidth * dpr;
+            waveCanvas.height = sourceHeight * dpr;
+            waveCtx.scale(dpr, dpr);
+
+            waveCtx.fillStyle = '#111827';
+            waveCtx.fillRect(0, 0, sourceWidth, sourceHeight);
+            waveCtx.beginPath();
+            waveCtx.setLineDash([5, 5]);
+            waveCtx.strokeStyle = '#4a5568';
+            waveCtx.lineWidth = 1;
+            waveCtx.moveTo(0, sourceHeight / 2);
+            waveCtx.lineTo(sourceWidth, sourceHeight / 2);
+            waveCtx.stroke();
+            waveCtx.setLineDash([]);
+
+            const forcedAmp = parseFloat(ui.sliderAmp.value);
+            const k = (parseFloat(ui.sliderFreq.value) / 300) * 0.018;
+            const currentPhase = phase;
+
+            if (graphTitle === '횡파') {
+                drawTransverseWave(waveCtx, sourceWidth, sourceHeight, forcedAmp, k, currentPhase, 0);
+            } else {
+                drawLongitudinalWave(waveCtx, sourceWidth, sourceHeight, forcedAmp, k, currentPhase, 0);
+            }
+
+            const compositeCanvas = document.createElement('canvas');
+            const ctx = compositeCanvas.getContext('2d');
+            const textHeight = 60;
+            const margin = 15;
+
+            compositeCanvas.width = waveCanvas.width + margin * 2 * dpr;
+            compositeCanvas.height = waveCanvas.height + textHeight * dpr + margin * 3 * dpr;
+            ctx.scale(dpr, dpr);
+
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, compositeCanvas.width / dpr, compositeCanvas.height / dpr);
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(margin + 10, margin);
+            ctx.lineTo(margin + sourceWidth - 10, margin);
+            ctx.quadraticCurveTo(margin + sourceWidth, margin, margin + sourceWidth, margin + 10);
+            ctx.lineTo(margin + sourceWidth, margin + sourceHeight - 10);
+            ctx.quadraticCurveTo(margin + sourceWidth, margin + sourceHeight, margin + sourceWidth - 10, margin + sourceHeight);
+            ctx.lineTo(margin + 10, margin + sourceHeight);
+            ctx.quadraticCurveTo(margin, margin + sourceHeight, margin, margin + sourceHeight - 10);
+            ctx.lineTo(margin, margin + 10);
+            ctx.quadraticCurveTo(margin, margin, margin + 10, margin);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(waveCanvas, margin, margin, sourceWidth, sourceHeight);
+            ctx.restore();
+
+            const waves = selectedWaveforms.map(w => ({'sine':'사인파','square':'사각파','sawtooth':'톱니파','triangle':'삼각파'})[w] || w).join(', ');
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Noto Sans KR, sans-serif';
+            ctx.textBaseline = 'top';
+            ctx.fillText(graphTitle, margin + 15, margin + 15);
+
+            ctx.font = '12px Noto Sans KR, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(waves, margin + sourceWidth - 15, margin + 18);
+            ctx.textAlign = 'left';
+
+            const paramY = margin + sourceHeight + margin;
+            ctx.font = '14px Noto Sans KR, sans-serif';
+            ctx.fillText(`진동수: ${ui.freqInput.value} Hz`, margin + 15, paramY + 10);
+            ctx.fillText(`진폭: ${ui.ampInput.value} %`, margin + 15, paramY + 35);
+            if (triggerMode === 'pulse') {
+                ctx.fillText(`펄스 속도: ${ui.pulseRateInput.value} Hz`, margin + 180, paramY + 10);
+            }
+
+            const dataURL = compositeCanvas.toDataURL('image/png');
+            addToGallery(dataURL, graphTitle);
+        }
+
+        function addToGallery(dataURL, graphTitle) {
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+
+            const img = document.createElement('img');
+            img.src = dataURL;
+            img.alt = `${graphTitle} 캡처 이미지`;
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'gallery-item-info';
+            const now = new Date();
+            infoDiv.textContent = `${graphTitle} - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'gallery-item-actions';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.textContent = '다운로드';
+            downloadBtn.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = dataURL;
+                a.download = `${graphTitle}_${now.getTime()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = '삭제';
+            deleteBtn.addEventListener('click', () => {
+                galleryItem.remove();
+            });
+
+            actionsDiv.appendChild(downloadBtn);
+            actionsDiv.appendChild(deleteBtn);
+            galleryItem.appendChild(img);
+            galleryItem.appendChild(infoDiv);
+            galleryItem.appendChild(actionsDiv);
+
+            ui.galleryContainer.prepend(galleryItem);
+        }
+
+        function addVideoToGallery(videoURL) {
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+
+            const video = document.createElement('video');
+            video.src = videoURL;
+            video.controls = true;
+            video.loop = true;
+            video.muted = true;
+            video.autoplay = true;
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'gallery-item-info';
+            const now = new Date();
+            infoDiv.textContent = `녹화 - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'gallery-item-actions';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.textContent = '다운로드';
+            downloadBtn.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = videoURL;
+                a.download = `simulation_${now.getTime()}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = '삭제';
+            deleteBtn.addEventListener('click', () => {
+                galleryItem.remove();
+                URL.revokeObjectURL(videoURL);
+            });
+
+            actionsDiv.appendChild(downloadBtn);
+            actionsDiv.appendChild(deleteBtn);
+            galleryItem.appendChild(video);
+            galleryItem.appendChild(infoDiv);
+            galleryItem.appendChild(actionsDiv);
+
+            ui.videoGalleryContainer.prepend(galleryItem);
+        }
+
+        // --- 녹화 기능 ---
+        function startRecording() {
+            if (!audioCtx) initAudio();
+
+            const videoStream = ui.compositingCanvas.captureStream(30); // 30 fps
+            const audioStream = mediaStreamDestination.stream;
+            const combinedStream = new MediaStream([
+                ...videoStream.getVideoTracks(),
+                ...audioStream.getAudioTracks()
+            ]);
+
+            // 브라우저가 지원하는 코덱을 순서대로 선택
+            const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+                .find(t => MediaRecorder.isTypeSupported(t)) || '';
+
+            mediaRecorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : undefined);
+
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) videoChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const videoBlob = new Blob(videoChunks, { type: 'video/webm' });
+                const videoURL = URL.createObjectURL(videoBlob);
+                addVideoToGallery(videoURL);
+                videoChunks = [];
+                isRecording = false;
+                ui.btnRecord.classList.remove('recording');
+                ui.recordText.textContent = '녹화';
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            ui.btnRecord.classList.add('recording');
+            ui.recordText.textContent = '중지';
+        }
+
+        // --- 이벤트 리스너 설정 ---
+        function setupEventListeners() {
+            function updatePulseRateUI(enabled) {
+                ui.pulseRateControl.toggleAttribute('disabled', !enabled);
+            }
+
+            ui.btnToggle.addEventListener('click', handlePlay);
+            ui.btnMute.addEventListener('click', toggleMute);
+
+            ui.triggerModeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    if (button.classList.contains('selected')) return;
+                    ui.triggerModeButtons.forEach(btn => btn.classList.remove('selected'));
+                    button.classList.add('selected');
+                    const newMode = button.id.split('-')[1];
+
+                    if (newMode !== triggerMode) {
+                        triggerMode = newMode;
+                        updatePulseRateUI(triggerMode === 'pulse');
+                        visualPulsePhase = 0;
+                        if (isPlaying) {
+                            // 새 모드로 재생을 다시 시작
+                            if (triggerMode === 'pulse') {
+                                startPulse();
+                            } else {
+                                stopPulse();
+                                updateAudioParams();
+                            }
+                        }
+                    }
+                });
+            });
+
+            ui.captureTransverseBtn.addEventListener('click', () => captureAsContinuous(ui.transverseCanvas, '횡파'));
+            ui.captureLongitudinalBtn.addEventListener('click', () => captureAsContinuous(ui.longitudinalCanvas, '종파'));
+
+            ui.btnRecord.addEventListener('click', () => {
+                if (isRecording) {
+                    mediaRecorder.stop();
+                } else {
+                    startRecording();
+                }
+            });
+
+            function updateSliderTrack(slider) {
+                const value = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+                slider.style.background = `linear-gradient(to right, #3b82f6 ${value}%, #4a5568 ${value}%)`;
+            }
+
+            function setupSlider(slider, input, onUpdate) {
+                const update = () => {
+                    input.value = slider.value;
+                    updateSliderTrack(slider);
+                    if (onUpdate) onUpdate();
+                };
+                slider.addEventListener('input', update);
+                input.addEventListener('change', () => {
+                    slider.value = input.value;
+                    update();
+                });
+            }
+
+            setupSlider(ui.sliderFreq, ui.freqInput, updateAudioParams);
+            setupSlider(ui.sliderAmp, ui.ampInput, updateAudioParams);
+            setupSlider(ui.sliderPulseRate, ui.pulseRateInput, () => {
+                if (isPlaying && triggerMode === 'pulse') {
+                    startPulse();
+                }
+            });
+
+            function setupHoldToRepeat(button, action, input, slider, min, max, onUpdate) {
+                let holdTimer = null, repeatTimer = null, currentRepeatDelay;
+                const initialRepeatDelay = 200, minRepeatDelay = 50, repeatDelayDecrement = 10;
+
+                const performUpdate = () => {
+                    let val = parseFloat(input.value);
+                    if (isNaN(val)) val = min;
+                    val = Math.min(max, Math.max(min, action(val)));
+                    const step = parseFloat(input.step) || 1;
+                    val = parseFloat(val.toFixed(step.toString().split('.')[1]?.length || 0));
+                    input.value = val;
+                    slider.value = val;
+                    updateSliderTrack(slider);
+                    if (onUpdate) onUpdate();
+                };
+                const startRepeating = () => {
+                    performUpdate();
+                    currentRepeatDelay = Math.max(minRepeatDelay, currentRepeatDelay - repeatDelayDecrement);
+                    repeatTimer = setTimeout(startRepeating, currentRepeatDelay);
+                };
+                const stopRepeating = () => {
+                    clearTimeout(holdTimer); holdTimer = null;
+                    clearTimeout(repeatTimer); repeatTimer = null;
+                };
+                button.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0) return; // 좌클릭만 (우클릭으로 인한 무한 반복 방지)
+                    e.preventDefault();
+                    stopRepeating(); // 이전 타이머가 남아 있으면 정리
+                    currentRepeatDelay = initialRepeatDelay;
+                    performUpdate();
+                    holdTimer = setTimeout(startRepeating, 500);
+                    document.addEventListener('mouseup', stopRepeating, { once: true });
+                });
+                // mouseup이 유실되는 경우(창 밖에서 놓기, 컨텍스트 메뉴 등)의 안전장치
+                window.addEventListener('blur', stopRepeating);
+                button.addEventListener('contextmenu', stopRepeating);
+            }
+            const pulseRateUpdate = () => { if (isPlaying && triggerMode === 'pulse') startPulse(); };
+            setupHoldToRepeat(document.getElementById('freqUp'), v => v + 1, ui.freqInput, ui.sliderFreq, 1, 20000, updateAudioParams);
+            setupHoldToRepeat(document.getElementById('freqDown'), v => v - 1, ui.freqInput, ui.sliderFreq, 1, 20000, updateAudioParams);
+            setupHoldToRepeat(document.getElementById('ampUp'), v => v + 1, ui.ampInput, ui.sliderAmp, 0, 100, updateAudioParams);
+            setupHoldToRepeat(document.getElementById('ampDown'), v => v - 1, ui.ampInput, ui.sliderAmp, 0, 100, updateAudioParams);
+            setupHoldToRepeat(document.getElementById('pulseRateUp'), v => v + 0.1, ui.pulseRateInput, ui.sliderPulseRate, 0.5, 10, pulseRateUpdate);
+            setupHoldToRepeat(document.getElementById('pulseRateDown'), v => v - 0.1, ui.pulseRateInput, ui.sliderPulseRate, 0.5, 10, pulseRateUpdate);
+
+            ui.waveformButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const waveformId = button.id;
+                    const isSelected = selectedWaveforms.includes(waveformId);
+                    if (isSelected && selectedWaveforms.length === 1) {
+                        // 마지막 남은 주요 파형은 선택 해제 불가
+                    } else if (isSelected) {
+                        selectedWaveforms = selectedWaveforms.filter(w => w !== waveformId);
+                        button.classList.remove('selected');
+                    } else {
+                        selectedWaveforms.push(waveformId);
+                        button.classList.add('selected');
+                    }
+                    syncOscillators();
+                });
+            });
+
+            window.addEventListener('resize', resizeCanvas);
+            updateSliderTrack(ui.sliderFreq);
+            updateSliderTrack(ui.sliderAmp);
+            updateSliderTrack(ui.sliderPulseRate);
+            updatePulseRateUI(false);
+        }
+
+        // --- 초기화 ---
+        resizeCanvas();
+        setupEventListeners();
+        render();
+    </script>
+</body>
+</html>
