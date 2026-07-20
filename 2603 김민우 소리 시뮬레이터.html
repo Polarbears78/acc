@@ -946,11 +946,15 @@
             galleryItem.appendChild(infoDiv);
             galleryItem.appendChild(actionsDiv);
 
+            // 맨 끝을 보고 있을 때만 새 항목을 따라 스크롤 (중간을 보고 있으면 그대로 유지)
+            const c = ui.galleryContainer;
+            const wasAtEnd = c.scrollLeft + c.clientWidth >= c.scrollWidth - 5;
             // 왼쪽부터 순서대로 채움: 새 항목은 기존 항목들 뒤(첫 빈 슬롯 자리)에 추가
-            ui.galleryContainer.insertBefore(galleryItem, ui.galleryContainer.querySelector('.placeholder-item'));
-            updatePlaceholders(ui.galleryContainer);
-            // 새 항목이 화면 밖에 채워지면 갤러리를 옆으로 따라 스크롤해 보여줌
-            ui.galleryContainer.scrollTo({ left: ui.galleryContainer.scrollWidth, behavior: 'smooth' });
+            c.insertBefore(galleryItem, c.querySelector('.placeholder-item'));
+            updatePlaceholders(c);
+            if (wasAtEnd) {
+                c.scrollTo({ left: c.scrollWidth, behavior: 'smooth' });
+            }
         }
 
         function addVideoToGallery(videoURL) {
@@ -999,11 +1003,15 @@
             galleryItem.appendChild(infoDiv);
             galleryItem.appendChild(actionsDiv);
 
+            // 맨 끝을 보고 있을 때만 새 항목을 따라 스크롤 (중간을 보고 있으면 그대로 유지)
+            const c = ui.videoGalleryContainer;
+            const wasAtEnd = c.scrollLeft + c.clientWidth >= c.scrollWidth - 5;
             // 왼쪽부터 순서대로 채움: 새 항목은 기존 항목들 뒤(첫 빈 슬롯 자리)에 추가
-            ui.videoGalleryContainer.insertBefore(galleryItem, ui.videoGalleryContainer.querySelector('.placeholder-item'));
-            updatePlaceholders(ui.videoGalleryContainer);
-            // 새 항목이 화면 밖에 채워지면 갤러리를 옆으로 따라 스크롤해 보여줌
-            ui.videoGalleryContainer.scrollTo({ left: ui.videoGalleryContainer.scrollWidth, behavior: 'smooth' });
+            c.insertBefore(galleryItem, c.querySelector('.placeholder-item'));
+            updatePlaceholders(c);
+            if (wasAtEnd) {
+                c.scrollTo({ left: c.scrollWidth, behavior: 'smooth' });
+            }
         }
 
         // --- 녹화 기능 ---
