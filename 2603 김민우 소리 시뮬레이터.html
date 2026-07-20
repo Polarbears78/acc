@@ -170,8 +170,8 @@
         .switch {
             position: relative;
             display: inline-block;
-            width: 34px;
-            height: 16px;
+            width: 28px;
+            height: 14px;
             flex-shrink: 0;
         }
         .switch input {
@@ -190,8 +190,8 @@
         .switch-slider::before {
             content: '';
             position: absolute;
-            width: 16px;  /* 슬라이더 썸과 동일한 알약 형태 */
-            height: 12px;
+            width: 14px;  /* 슬라이더 썸과 같은 알약 형태 (살짝 축소) */
+            height: 10px;
             left: 2px;
             top: 2px;
             background-color: white;
@@ -202,7 +202,7 @@
             background-color: #3b82f6; /* blue-500 */
         }
         .switch input:checked + .switch-slider::before {
-            transform: translateX(14px);
+            transform: translateX(10px);
         }
         /* 비교 다운로드 버튼 활성(1~3개 선택) 상태 */
         .pill-btn.active {
@@ -380,7 +380,7 @@
                         <div class="flex items-center justify-between mb-1 gap-3">
                             <span class="text-xs font-semibold text-gray-400">파형 (주요 파형)</span>
                             <label class="flex items-center gap-1.5 cursor-pointer" title="켜면 여러 파형을 겹쳐 합성할 수 있습니다">
-                                <span class="text-xs font-semibold text-gray-400">파형 중첩</span>
+                                <span class="text-[11px] font-semibold text-gray-400">파형 중첩</span>
                                 <span class="switch"><input type="checkbox" id="overlapToggle"><span class="switch-slider"></span></span>
                             </label>
                         </div>
