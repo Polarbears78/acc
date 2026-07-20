@@ -150,9 +150,12 @@
         .gallery-row {
             display: flex;
             gap: 1.5rem;
-            overflow-x: auto;
-            padding-bottom: 0.5rem; /* 스크롤바 자리 */
+            overflow-x: scroll; /* 스크롤바 공간을 항상 확보해 항목이 늘어나도 아래로 밀리지 않음 */
+            padding-bottom: 0.5rem;
             scroll-snap-type: x proximity;
+        }
+        .gallery-row::-webkit-scrollbar-track {
+            background: transparent; /* 스크롤할 내용이 없을 땐 막대가 보이지 않도록 */
         }
         .gallery-row > * {
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
@@ -850,6 +853,8 @@
 
             ui.galleryContainer.prepend(galleryItem);
             updatePlaceholders(ui.galleryContainer);
+            // 새로 저장된 항목(맨 앞)이 보이도록 갤러리를 처음 위치로 스크롤
+            ui.galleryContainer.scrollTo({ left: 0, behavior: 'smooth' });
         }
 
         function addVideoToGallery(videoURL) {
@@ -900,6 +905,8 @@
 
             ui.videoGalleryContainer.prepend(galleryItem);
             updatePlaceholders(ui.videoGalleryContainer);
+            // 새로 저장된 항목(맨 앞)이 보이도록 갤러리를 처음 위치로 스크롤
+            ui.videoGalleryContainer.scrollTo({ left: 0, behavior: 'smooth' });
         }
 
         // --- 녹화 기능 ---
