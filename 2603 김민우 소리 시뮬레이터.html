@@ -179,12 +179,11 @@
             width: 100%;
             height: auto;
         }
-        /* 사진 아래 남는 공간에 놓이는 선택 체크박스 */
+        /* 사진 위쪽에 놓이는 선택 체크박스 */
         .select-box {
-            flex: 1;
             display: flex;
             align-items: center;
-            padding-top: 0.3rem;
+            padding-bottom: 0.3rem;
             cursor: pointer;
         }
         .select-box input[type=checkbox] {
@@ -871,8 +870,8 @@
             const selectCheckbox = document.createElement('input');
             selectCheckbox.type = 'checkbox';
             selectLabel.appendChild(selectCheckbox);
+            mediaBox.appendChild(selectLabel); // 체크박스를 사진 위에 배치
             mediaBox.appendChild(img);
-            mediaBox.appendChild(selectLabel);
 
             const infoDiv = document.createElement('div');
             infoDiv.className = 'gallery-item-info';
