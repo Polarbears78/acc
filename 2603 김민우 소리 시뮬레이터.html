@@ -145,6 +145,25 @@
         .gallery-item-actions .delete-btn:hover {
             background-color: #dc2626; /* red-600 */
         }
+        /* 저장소 빈 슬롯 (아직 저장된 항목이 없을 때 자리를 미리 보여줌) */
+        .placeholder-item {
+            border: 2px dashed #374151; /* gray-700 */
+            border-radius: 0.5rem;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: #4b5563; /* gray-600 */
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .placeholder-item svg {
+            width: 2rem;
+            height: 2rem;
+            opacity: 0.6;
+        }
         /* 헤더 반투명 효과 */
         header {
             position: sticky; /* 스크롤 시 상단에 고정 */
@@ -745,6 +764,27 @@
             addToGallery(dataURL, graphTitle);
         }
 
+        // --- 저장소 빈 슬롯 관리 ---
+        // 실제 항목 수와 무관하게 갤러리에 최소 4칸이 보이도록 빈 슬롯을 채움
+        const PLACEHOLDER_MIN_SLOTS = 4;
+        const PLACEHOLDER_ICONS = {
+            image: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V4.5a1.5 1.5 0 00-1.5-1.5H3.75a1.5 1.5 0 00-1.5 1.5v15a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V9.75z"/></svg>',
+            video: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>'
+        };
+        const PLACEHOLDER_LABELS = { image: '이미지 저장 공간', video: '동영상 저장 공간' };
+
+        function updatePlaceholders(container, type) {
+            container.querySelectorAll('.placeholder-item').forEach(el => el.remove());
+            const realCount = container.children.length;
+            const needed = Math.max(0, PLACEHOLDER_MIN_SLOTS - realCount);
+            for (let i = 0; i < needed; i++) {
+                const ph = document.createElement('div');
+                ph.className = 'placeholder-item';
+                ph.innerHTML = `${PLACEHOLDER_ICONS[type]}<span>${PLACEHOLDER_LABELS[type]}</span>`;
+                container.appendChild(ph);
+            }
+        }
+
         function addToGallery(dataURL, graphTitle) {
             const galleryItem = document.createElement('div');
             galleryItem.className = 'gallery-item';
@@ -778,6 +818,7 @@
             deleteBtn.textContent = '삭제';
             deleteBtn.addEventListener('click', () => {
                 galleryItem.remove();
+                updatePlaceholders(ui.galleryContainer, 'image');
             });
 
             actionsDiv.appendChild(downloadBtn);
@@ -787,6 +828,7 @@
             galleryItem.appendChild(actionsDiv);
 
             ui.galleryContainer.prepend(galleryItem);
+            updatePlaceholders(ui.galleryContainer, 'image');
         }
 
         function addVideoToGallery(videoURL) {
@@ -826,6 +868,7 @@
             deleteBtn.addEventListener('click', () => {
                 galleryItem.remove();
                 URL.revokeObjectURL(videoURL);
+                updatePlaceholders(ui.videoGalleryContainer, 'video');
             });
 
             actionsDiv.appendChild(downloadBtn);
@@ -835,6 +878,7 @@
             galleryItem.appendChild(actionsDiv);
 
             ui.videoGalleryContainer.prepend(galleryItem);
+            updatePlaceholders(ui.videoGalleryContainer, 'video');
         }
 
         // --- 녹화 기능 ---
@@ -1016,6 +1060,8 @@
         // --- 초기화 ---
         resizeCanvas();
         setupEventListeners();
+        updatePlaceholders(ui.galleryContainer, 'image');
+        updatePlaceholders(ui.videoGalleryContainer, 'video');
         render();
     </script>
 </body>
