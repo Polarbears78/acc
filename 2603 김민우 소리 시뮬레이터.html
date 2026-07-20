@@ -776,10 +776,11 @@
             ctx.beginPath();
             for (let x = 0; x < width; x++) {
                 const wavePhase = k * (x - width / 2) + p;
-                // 제자리 미세 진동: 구간마다 타이밍(위상)과 세기가 달라 띄엄띄엄 떨리는 느낌
-                const phi = 2.5 * Math.sin(0.031 * x) + 1.7 * Math.sin(0.013 * x);
-                const env = 0.5 + 0.5 * Math.sin(0.023 * x + 0.7);
-                const jitter = aliveLevel * 1.1 * env * Math.sin(alivePhase * 1.8 + phi);
+                // 제자리 미세 진동: 점마다 자기만의 위상과 속도를 가져 제멋대로 자연스럽게 움직임
+                const phi = 2.7 * Math.sin(0.019 * x) + 2.1 * Math.sin(0.0071 * x + 1.3) + 1.4 * Math.sin(0.043 * x + 4.1);
+                const spd = 1.0 + 0.35 * Math.sin(0.013 * x + 2.2);
+                const env = 0.65 + 0.35 * Math.sin(0.017 * x + 0.9);
+                const jitter = aliveLevel * 0.8 * env * Math.sin(alivePhase * spd + phi);
                 const y = (height / 2) + pixelAmp * getCombinedWave(wavePhase) + offset + jitter;
                 x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
@@ -797,13 +798,13 @@
                 const value = getCombinedWave(wavePhase);
                 const edgeFactor = Math.sin((i / numParticles) * Math.PI);
                 const dx = amp * edgeFactor * value + (offset * edgeFactor * 0.2);
-                // 입자별 제자리 미세 진동 (종파는 더 차분하게, 입자마다 타이밍이 다름)
-                const phiP = 2.2 * Math.sin(0.11 * i);
-                const envP = 0.5 + 0.5 * Math.sin(0.083 * i + 0.5);
-                const jx = aliveLevel * 0.35 * envP * Math.sin(alivePhase * 1.5 + phiP);
+                // 입자별 제자리 미세 진동: 입자마다 자기만의 위상과 속도 (종파는 가장 차분하게)
+                const phiP = 2.6 * Math.sin(0.067 * i) + 1.8 * Math.sin(0.023 * i + 1.7);
+                const spdP = 1.0 + 0.3 * Math.sin(0.041 * i + 2.9);
+                const jx = aliveLevel * 0.25 * Math.sin(alivePhase * spdP + phiP);
                 for (let yOffset = -35; yOffset <= 35; yOffset += 10) {
                     const radius = 2.2 * (1 - Math.abs(yOffset) / 35 * 0.3);
-                    const jy = aliveLevel * 0.3 * Math.sin(alivePhase * 1.2 + 2.0 * Math.sin(0.09 * i) + yOffset * 0.2);
+                    const jy = aliveLevel * 0.22 * Math.sin(alivePhase * (0.9 + 0.25 * Math.sin(0.053 * i)) + 2.3 * Math.sin(0.031 * i) + yOffset * 0.2);
                     ctx.beginPath();
                     ctx.arc(xOriginal + dx + jx, (height / 2) + yOffset + jy, radius, 0, 2 * Math.PI);
                     ctx.fill();
@@ -842,7 +843,7 @@
             // 재생 중일 때만 점들이 각자 미세하게 진동 (정지하면 서서히 잦아듦)
             // 떨림 속도는 진동수에 따라 달라짐: 낮은 음은 느리게, 높은 음은 빠르게 (로그 스케일)
             const freqVal = parseFloat(ui.sliderFreq.value);
-            alivePhase += 0.04 + 0.14 * Math.min(1, Math.log10(Math.max(1, freqVal)) / 4.3);
+            alivePhase += 0.03 + 0.10 * Math.min(1, Math.log10(Math.max(1, freqVal)) / 4.3);
             aliveLevel += ((isPlaying ? 1 : 0) - aliveLevel) * 0.08;
             const aliveOffset = 0;
             const k = (freqVal / 300) * 0.018;
