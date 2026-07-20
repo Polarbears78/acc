@@ -69,12 +69,19 @@
             height: 2.5rem; /* h-10 */
         }
         .record-btn {
-            height: 4.5rem;
-            width: 4.5rem;
+            width: 3.5rem;  /* 정사각형 */
+            height: 3.5rem;
+            border-radius: 0.75rem; /* 둥근 모서리 */
+            background-color: #b91c1c; /* red-700 */
+            border: 1px solid #991b1b; /* red-800 */
+            color: white;
             flex-direction: column;
             gap: 0.25rem;
         }
-        .waveform-btn:hover, .trigger-mode-btn:hover, .more-btn:hover, .record-btn:hover {
+        .record-btn:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        .waveform-btn:hover, .trigger-mode-btn:hover, .more-btn:hover {
             background-color: rgb(75 85 99);
         }
         .waveform-btn.selected, .trigger-mode-btn.selected {
@@ -83,9 +90,8 @@
             border: 1px solid rgb(29 78 216); /* blue-700 */
         }
         .record-btn.recording {
-            background-color: #b91c1c; /* red-700 */
-            border-color: #991b1b; /* red-800 */
-            color: white;
+            background-color: #7f1d1d; /* red-900: 녹화 중에는 더 진한 빨강 */
+            border-color: #f87171; /* red-400 테두리로 강조 */
         }
         @keyframes blink {
             50% { opacity: 0.5; }
@@ -345,7 +351,7 @@
                             </div>
                         </div>
                     </div>
-                    <button id="btnRecord" class="record-btn w-20 h-10">
+                    <button id="btnRecord" class="record-btn">
                         <span class="record-text">녹화</span>
                     </button>
                 </div>
