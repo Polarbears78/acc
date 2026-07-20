@@ -382,7 +382,7 @@
 
     <!-- 상단 헤더 -->
     <header class="px-6 py-4 flex-shrink-0 z-50 shadow-md">
-        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-center sm:justify-between gap-4">
+        <div class="max-w-7xl mx-auto flex flex-nowrap items-center justify-between gap-4 overflow-x-auto">
 
             <div class="flex flex-col text-center sm:text-left">
                 <h1 class="text-2xl font-bold tracking-tight text-white">파동 시뮬레이터</h1>
@@ -835,7 +835,7 @@
         function drawLongitudinalWave(ctx, width, height, amp, k, p, offset) {
             ctx.fillStyle = '#f43f5e';
             // 입자를 작고 촘촘하게: 화면 폭에 비례해 개수를 늘려 높은 진동수(짧은 파장)에서도 소밀이 보이도록
-            const numParticles = Math.max(120, Math.round(width / 5));
+            const numParticles = Math.max(160, Math.round(width / 3.5));
             const spacing = width / numParticles;
             for (let i = 0; i <= numParticles; i++) {
                 const xOriginal = i * spacing;
@@ -846,8 +846,8 @@
                 // 입자별 무작위 오차 움직임 (종파는 가장 차분하게)
                 const nx = smoothNoise(i / 6, alivePhase * 0.7 + 50);
                 const jx = aliveLevel * (amp / 100) * 1.4 * nx * nx * nx * nx * nx;
-                for (let yOffset = -35; yOffset <= 35; yOffset += 10) {
-                    const radius = 2.2 * (1 - Math.abs(yOffset) / 35 * 0.3);
+                for (let yOffset = -35; yOffset <= 35; yOffset += 8) {
+                    const radius = 1.9 * (1 - Math.abs(yOffset) / 35 * 0.3);
                     const ny = smoothNoise(i / 6 + yOffset * 0.13, alivePhase * 0.6 + 120);
                     const jy = aliveLevel * (amp / 100) * 1.0 * ny * ny * ny * ny * ny;
                     ctx.beginPath();
@@ -949,8 +949,9 @@
         // --- 스크린샷 기능 ---
         function captureAsContinuous(sourceCanvas, graphTitle) {
             const dpr = window.devicePixelRatio || 1;
-            const sourceWidth = sourceCanvas.getBoundingClientRect().width;
-            const sourceHeight = sourceCanvas.getBoundingClientRect().height;
+            // 화면 캔버스가 좁아져도 캡처는 항상 긴 고정 폭으로 그려서 저장
+            const sourceWidth = 1200;
+            const sourceHeight = 200;
 
             const waveCanvas = document.createElement('canvas');
             const waveCtx = waveCanvas.getContext('2d');
