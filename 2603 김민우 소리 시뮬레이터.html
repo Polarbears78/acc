@@ -170,7 +170,7 @@
         .switch {
             position: relative;
             display: inline-block;
-            width: 30px;
+            width: 34px;
             height: 16px;
             flex-shrink: 0;
         }
@@ -190,12 +190,12 @@
         .switch-slider::before {
             content: '';
             position: absolute;
-            width: 12px;
+            width: 16px;  /* 슬라이더 썸과 동일한 알약 형태 */
             height: 12px;
             left: 2px;
             top: 2px;
             background-color: white;
-            border-radius: 50%;
+            border-radius: 9999px;
             transition: transform 0.2s ease;
         }
         .switch input:checked + .switch-slider {
@@ -380,7 +380,7 @@
                         <div class="flex items-center justify-between mb-1 gap-3">
                             <span class="text-xs font-semibold text-gray-400">파형 (주요 파형)</span>
                             <label class="flex items-center gap-1.5 cursor-pointer" title="켜면 여러 파형을 겹쳐 합성할 수 있습니다">
-                                <span class="text-[10px] font-semibold text-gray-500">중첩</span>
+                                <span class="text-xs font-semibold text-gray-400">파형 중첩</span>
                                 <span class="switch"><input type="checkbox" id="overlapToggle"><span class="switch-slider"></span></span>
                             </label>
                         </div>
