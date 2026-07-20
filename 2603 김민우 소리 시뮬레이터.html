@@ -851,10 +851,13 @@
             galleryItem.appendChild(infoDiv);
             galleryItem.appendChild(actionsDiv);
 
+            // 새 항목은 왼쪽(맨 앞)에 쌓이고, 스크롤해서 이전 항목을 보고 있었다면 보던 위치를 유지
+            const prevScroll = ui.galleryContainer.scrollLeft;
             ui.galleryContainer.prepend(galleryItem);
             updatePlaceholders(ui.galleryContainer);
-            // 새로 저장된 항목(맨 앞)이 보이도록 갤러리를 처음 위치로 스크롤
-            ui.galleryContainer.scrollTo({ left: 0, behavior: 'smooth' });
+            if (prevScroll > 0) {
+                ui.galleryContainer.scrollLeft = prevScroll + galleryItem.offsetWidth + 24; // 24px = 항목 간격
+            }
         }
 
         function addVideoToGallery(videoURL) {
@@ -903,10 +906,13 @@
             galleryItem.appendChild(infoDiv);
             galleryItem.appendChild(actionsDiv);
 
+            // 새 항목은 왼쪽(맨 앞)에 쌓이고, 스크롤해서 이전 항목을 보고 있었다면 보던 위치를 유지
+            const prevScroll = ui.videoGalleryContainer.scrollLeft;
             ui.videoGalleryContainer.prepend(galleryItem);
             updatePlaceholders(ui.videoGalleryContainer);
-            // 새로 저장된 항목(맨 앞)이 보이도록 갤러리를 처음 위치로 스크롤
-            ui.videoGalleryContainer.scrollTo({ left: 0, behavior: 'smooth' });
+            if (prevScroll > 0) {
+                ui.videoGalleryContainer.scrollLeft = prevScroll + galleryItem.offsetWidth + 24; // 24px = 항목 간격
+            }
         }
 
         // --- 녹화 기능 ---
