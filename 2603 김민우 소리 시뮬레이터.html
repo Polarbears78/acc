@@ -178,6 +178,7 @@
         .media-box img {
             width: 100%;
             height: auto;
+            margin: auto 0; /* 체크박스와 설명 사이 남는 공간의 세로 중앙에 배치 */
         }
         /* 사진 위쪽에 놓이는 선택 체크박스 */
         .select-box {
@@ -373,7 +374,10 @@
 
             <div class="flex justify-between items-center mt-2 mb-3">
                 <h3 class="text-xl font-semibold text-gray-300 ml-4">이미지</h3>
-                <button id="expand-images-btn" class="pill-btn">전체 보기</button>
+                <div class="flex items-center gap-2">
+                    <button id="download-selected-btn" class="pill-btn">선택 다운로드</button>
+                    <button id="expand-images-btn" class="pill-btn">전체 보기</button>
+                </div>
             </div>
             <div id="gallery-container" class="gallery-row">
                 <!-- 캡처된 이미지가 여기에 추가됩니다. -->
@@ -1141,6 +1145,25 @@
             }
             setupExpandToggle(document.getElementById('expand-images-btn'), ui.galleryContainer);
             setupExpandToggle(document.getElementById('expand-videos-btn'), ui.videoGalleryContainer);
+
+            // 체크된 사진들을 한꺼번에 다운로드 (여러 장을 받아 비교 용도)
+            document.getElementById('download-selected-btn').addEventListener('click', () => {
+                const checked = ui.galleryContainer.querySelectorAll('.select-box input:checked');
+                if (checked.length === 0) {
+                    alert('다운로드할 사진을 먼저 체크해 주세요.');
+                    return;
+                }
+                const stamp = Date.now();
+                checked.forEach((cb, i) => {
+                    const img = cb.closest('.gallery-item').querySelector('img');
+                    const a = document.createElement('a');
+                    a.href = img.src;
+                    a.download = `파동_비교_${stamp}_${i + 1}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+            });
 
             window.addEventListener('resize', resizeCanvas);
             updateSliderTrack(ui.sliderFreq);
