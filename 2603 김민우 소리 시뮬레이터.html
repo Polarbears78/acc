@@ -166,6 +166,59 @@
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
             min-width: 220px;
         }
+        /* 음계 선택 아이콘 버튼과 메뉴 (클릭으로 열림) */
+        .note-icon-btn {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgb(55 65 81); /* gray-700 */
+            border: 1px solid rgb(75 85 99); /* gray-600 */
+            border-radius: 4px;
+            color: rgb(209 213 219);
+            font-size: 10px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .note-icon-btn:hover {
+            background-color: rgb(75 85 99);
+        }
+        .note-menu {
+            display: none;
+            position: absolute;
+            top: 130%;
+            left: 0;
+            z-index: 70;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            background-color: rgb(31 41 55); /* gray-800 */
+            border: 1px solid rgb(75 85 99);
+            border-radius: 0.5rem;
+            padding: 6px;
+            width: max-content;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        .note-menu.open {
+            display: grid;
+        }
+        .note-menu button {
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            background-color: rgb(55 65 81);
+            border: 1px solid rgb(75 85 99);
+            border-radius: 4px;
+            color: rgb(209 213 219);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.15s ease;
+        }
+        .note-menu button:hover {
+            background-color: rgb(30 58 138); /* blue-900 */
+            color: white;
+        }
         /* 파형 중첩 토글 스위치 */
         .switch {
             position: relative;
@@ -340,7 +393,20 @@
                 <div class="flex flex-col gap-3">
                     <div class="flex flex-col w-72 sm:w-80 control-group">
                         <div class="flex justify-between items-center text-xs font-semibold mb-1">
-                            <span class="text-gray-400 w-12">진동수</span>
+                            <div class="flex items-center gap-1.5 relative">
+                                <span class="text-gray-400">진동수</span>
+                                <button id="noteMenuBtn" class="note-icon-btn" title="음계로 진동수 설정">♪</button>
+                                <div id="noteMenu" class="note-menu">
+                                    <button data-freq="262">도 262</button>
+                                    <button data-freq="294">레 294</button>
+                                    <button data-freq="330">미 330</button>
+                                    <button data-freq="349">파 349</button>
+                                    <button data-freq="392">솔 392</button>
+                                    <button data-freq="440">라 440</button>
+                                    <button data-freq="494">시 494</button>
+                                    <button data-freq="523">도 523</button>
+                                </div>
+                            </div>
                             <div class="flex items-center gap-0.5">
                                 <input type="number" id="freqInput" min="1" max="20000" value="250" class="bg-gray-800 text-blue-400 font-mono w-14 text-right rounded-md px-2 py-0.5 border border-gray-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                                 <div class="flex flex-col"><button id="freqUp" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-t-md leading-none">▲</button><button id="freqDown" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-b-md leading-none">▼</button></div>
@@ -765,6 +831,8 @@
 
             const aliveOffset = 0;
             const k = (parseFloat(ui.sliderFreq.value) / 300) * 0.018;
+            // 재생 중일 때 파동이 오른쪽으로 진행 (정지하면 멈춤)
+            if (isPlaying) phase -= 0.06;
 
             drawTransverseWave(ctxTransverse, canvasWidth, canvasHeight, visualAmp, k, phase, aliveOffset);
             drawLongitudinalWave(ctxLongitudinal, canvasWidth, canvasHeight, visualAmp, k, phase, aliveOffset);
@@ -1214,6 +1282,29 @@
             setupHoldToRepeat(document.getElementById('ampDown'), v => v - 1, ui.ampInput, ui.sliderAmp, 0, 100, updateAudioParams);
             setupHoldToRepeat(document.getElementById('pulseRateUp'), v => v + 0.1, ui.pulseRateInput, ui.sliderPulseRate, 0.5, 10, pulseRateUpdate);
             setupHoldToRepeat(document.getElementById('pulseRateDown'), v => v - 0.1, ui.pulseRateInput, ui.sliderPulseRate, 0.5, 10, pulseRateUpdate);
+
+            // 음계 메뉴: ♪ 아이콘을 클릭하면 열리고, 음을 고르면 진동수가 설정됨
+            const noteMenuBtn = document.getElementById('noteMenuBtn');
+            const noteMenu = document.getElementById('noteMenu');
+            noteMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                noteMenu.classList.toggle('open');
+            });
+            noteMenu.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-freq]');
+                if (!btn) return;
+                const f = parseInt(btn.dataset.freq, 10);
+                ui.freqInput.value = f;
+                ui.sliderFreq.value = f;
+                updateSliderTrack(ui.sliderFreq);
+                updateAudioParams();
+                noteMenu.classList.remove('open');
+            });
+            document.addEventListener('click', (e) => {
+                if (!noteMenu.contains(e.target) && e.target !== noteMenuBtn) {
+                    noteMenu.classList.remove('open');
+                }
+            });
 
             const overlapToggle = document.getElementById('overlapToggle');
 
