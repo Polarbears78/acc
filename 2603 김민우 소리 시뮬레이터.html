@@ -166,6 +166,13 @@
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
             min-width: 220px;
         }
+        /* 상단바: 창이 좁아지면 내용이 줄어들지 않고 가로 스크롤 */
+        .header-row {
+            overflow-y: hidden; /* 세로 스크롤 방지 */
+        }
+        .header-row > * {
+            flex-shrink: 0; /* 자식이 찌그러지지 않아야 가로로 넘쳐 스크롤이 생김 */
+        }
         /* 음계 선택 아이콘 버튼과 메뉴 (클릭으로 열림) */
         .note-icon-btn {
             width: 16px;
@@ -187,9 +194,7 @@
         }
         .note-menu {
             display: none;
-            position: absolute;
-            top: 130%;
-            left: 0;
+            position: fixed; /* 헤더 스크롤 영역에 갇히지 않도록 화면 기준 배치 (위치는 JS가 계산) */
             z-index: 70;
             flex-direction: column;
             gap: 4px;
@@ -382,7 +387,7 @@
 
     <!-- 상단 헤더 -->
     <header class="px-6 py-4 flex-shrink-0 z-50 shadow-md">
-        <div class="max-w-7xl mx-auto flex flex-nowrap items-center justify-between gap-4 overflow-x-auto">
+        <div class="header-row max-w-7xl mx-auto flex flex-nowrap items-center justify-between gap-4 overflow-x-auto">
 
             <div class="flex flex-col text-center sm:text-left">
                 <h1 class="text-2xl font-bold tracking-tight text-white">파동 시뮬레이터</h1>
@@ -1348,6 +1353,12 @@
             const noteMenu = document.getElementById('noteMenu');
             noteMenuBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (!noteMenu.classList.contains('open')) {
+                    // ♪ 버튼 바로 아래에 화면 기준으로 배치
+                    const r = noteMenuBtn.getBoundingClientRect();
+                    noteMenu.style.left = r.left + 'px';
+                    noteMenu.style.top = (r.bottom + 6) + 'px';
+                }
                 noteMenu.classList.toggle('open');
             });
             noteMenu.addEventListener('click', (e) => {
