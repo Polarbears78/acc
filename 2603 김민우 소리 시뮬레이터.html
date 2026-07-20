@@ -791,7 +791,8 @@
             waveCtx.lineTo(sourceWidth, sourceHeight / 2);
             waveCtx.stroke();
 
-            const forcedAmp = parseFloat(ui.sliderAmp.value);
+            // 재생 중이면 원래처럼 진폭 슬라이더 값으로, 멈춘 상태면 화면 그대로(멈춘 모습)로 캡처
+            const forcedAmp = isPlaying ? parseFloat(ui.sliderAmp.value) : visualAmp;
             const k = (parseFloat(ui.sliderFreq.value) / 300) * 0.018;
             const currentPhase = phase;
 
