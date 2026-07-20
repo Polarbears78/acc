@@ -663,7 +663,8 @@
 
         function drawLongitudinalWave(ctx, width, height, amp, k, p, offset) {
             ctx.fillStyle = '#f43f5e';
-            const numParticles = 100;
+            // 입자를 작고 촘촘하게: 화면 폭에 비례해 개수를 늘려 높은 진동수(짧은 파장)에서도 소밀이 보이도록
+            const numParticles = Math.max(120, Math.round(width / 5));
             const spacing = width / numParticles;
             for (let i = 0; i <= numParticles; i++) {
                 const xOriginal = i * spacing;
@@ -671,8 +672,8 @@
                 const value = getCombinedWave(wavePhase);
                 const edgeFactor = Math.sin((i / numParticles) * Math.PI);
                 const dx = amp * edgeFactor * value + (offset * edgeFactor * 0.2);
-                for (let yOffset = -35; yOffset <= 35; yOffset += 12) {
-                    const radius = 4.5 * (1 - Math.abs(yOffset) / 35 * 0.4);
+                for (let yOffset = -35; yOffset <= 35; yOffset += 10) {
+                    const radius = 2.2 * (1 - Math.abs(yOffset) / 35 * 0.3);
                     ctx.beginPath();
                     ctx.arc(xOriginal + dx, (height / 2) + yOffset, radius, 0, 2 * Math.PI);
                     ctx.fill();
