@@ -777,7 +777,7 @@
             for (let x = 0; x < width; x++) {
                 const wavePhase = k * (x - width / 2) + p;
                 // 점마다 위상이 다른 미세 진동: 각 점이 각자 따로 움직이는 느낌
-                const jitter = aliveLevel * 2.2
+                const jitter = aliveLevel * 1.2
                     * Math.sin(0.11 * x + alivePhase * 2.3)
                     * Math.sin(0.053 * x - alivePhase * 1.4);
                 const y = (height / 2) + pixelAmp * getCombinedWave(wavePhase) + offset + jitter;
@@ -798,12 +798,12 @@
                 const edgeFactor = Math.sin((i / numParticles) * Math.PI);
                 const dx = amp * edgeFactor * value + (offset * edgeFactor * 0.2);
                 // 입자마다 위상이 다른 미세 진동
-                const jx = aliveLevel * 1.6
+                const jx = aliveLevel * 0.9
                     * Math.sin(0.37 * i + alivePhase * 2.1)
                     * Math.sin(0.19 * i - alivePhase * 1.6);
                 for (let yOffset = -35; yOffset <= 35; yOffset += 10) {
                     const radius = 2.2 * (1 - Math.abs(yOffset) / 35 * 0.3);
-                    const jy = aliveLevel * 1.4 * Math.sin(0.31 * i + yOffset * 0.23 + alivePhase * 1.9);
+                    const jy = aliveLevel * 0.8 * Math.sin(0.31 * i + yOffset * 0.23 + alivePhase * 1.9);
                     ctx.beginPath();
                     ctx.arc(xOriginal + dx + jx, (height / 2) + yOffset + jy, radius, 0, 2 * Math.PI);
                     ctx.fill();
@@ -840,7 +840,7 @@
             visualAmp += (targetAmp - visualAmp) * 0.3;
 
             // 재생 중일 때만 점들이 각자 미세하게 진동 (정지하면 서서히 잦아듦)
-            alivePhase += 0.2;
+            alivePhase += 0.12;
             aliveLevel += ((isPlaying ? 1 : 0) - aliveLevel) * 0.08;
             const aliveOffset = 0;
             const k = (parseFloat(ui.sliderFreq.value) / 300) * 0.018;
