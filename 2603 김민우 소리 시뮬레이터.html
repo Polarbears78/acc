@@ -160,27 +160,6 @@
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
             min-width: 220px;
         }
-        /* 더보기 악기 파형 드롭다운 (마우스를 올리면 표시) */
-        .more-wrap {
-            position: relative;
-        }
-        .more-dropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            z-index: 60;
-            background-color: rgb(31 41 55); /* gray-800 */
-            border: 1px solid rgb(75 85 99); /* gray-600 */
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            flex-direction: column;
-            gap: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-        }
-        .more-wrap:hover .more-dropdown {
-            display: flex;
-        }
         /* 비교 다운로드 버튼 활성(1~3개 선택) 상태 */
         .pill-btn.active {
             background-color: #2563eb; /* blue-600 */
@@ -365,17 +344,6 @@
                                     <button id="triangle" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12L7 2L17 22L22 12"></path></svg><span>삼각파</span></button>
                                 </div>
                             </div>
-                            <div class="more-wrap flex flex-col">
-                                <span class="text-[10px] font-semibold text-gray-500 mb-1">악기</span>
-                                <button id="more-waveforms-btn" class="more-btn flex-1 px-3">더보기 ▾</button>
-                                <div class="more-dropdown">
-                                    <button id="violin" class="waveform-btn">🎻 바이올린</button>
-                                    <button id="clarinet" class="waveform-btn">🎶 클라리넷</button>
-                                    <button id="trumpet" class="waveform-btn">🎺 트럼펫</button>
-                                    <button id="organ" class="waveform-btn">🎹 오르간</button>
-                                    <button id="flute" class="waveform-btn">🪈 플루트</button>
-                                </div>
-                            </div>
                         </div>
                     </div>
                     <button id="btnRecord" class="record-btn w-20 h-10">
@@ -454,20 +422,7 @@
         // 녹화 영상 레이아웃 (여백, 제목 높이, 그래프 사이 간격, 하단 정보 높이)
         const REC_LAYOUT = { margin: 20, labelH: 32, gap: 16, infoH: 36 };
 
-        // 악기 파형: 배음(harmonics) 세기 비율 (n번째 값 = n배음의 상대 세기)
-        // 위 배음일수록 빠르게 약해지도록 해 교과서적인 파형 모양이 나오게 조정
-        const INSTRUMENTS = {
-            violin:   { harmonics: [1, 0.55, 0.35, 0.25, 0.18, 0.12, 0.08, 0.05] }, // 톱니파에 가까운 풍부한 배음
-            clarinet: { harmonics: [1, 0, 0.4, 0, 0.2, 0, 0.1, 0] },                // 홀수 배음만 (사각파 계열)
-            trumpet:  { harmonics: [1, 0.7, 0.5, 0.35, 0.25, 0.18, 0.12, 0.08] },   // 밝고 강한 배음
-            organ:    { harmonics: [1, 0.5, 0.25, 0.35, 0, 0, 0, 0.15] },           // 옥타브 배음 위주
-            flute:    { harmonics: [1, 0.15, 0.05] },                                // 기본음 위주 (사인파에 가까움)
-        };
-        const WAVE_NAMES = {
-            sine: '사인파', square: '사각파', sawtooth: '톱니파', triangle: '삼각파',
-            violin: '바이올린', clarinet: '클라리넷', trumpet: '트럼펫', organ: '오르간', flute: '플루트'
-        };
-        const customWaves = {}; // 악기별 PeriodicWave 캐시
+        const WAVE_NAMES = { sine: '사인파', square: '사각파', sawtooth: '톱니파', triangle: '삼각파' };
         let mediaStreamDestination = null; // 녹화용 오디오 스트림
         let recordingGain = null; // 음소거와 무관하게 녹화 소리를 담는 게인
 
@@ -521,17 +476,6 @@
             syncOscillators();
         }
 
-        function getPeriodicWave(type) {
-            if (!customWaves[type]) {
-                const h = INSTRUMENTS[type].harmonics;
-                const real = new Float32Array(h.length + 1);
-                const imag = new Float32Array(h.length + 1);
-                h.forEach((a, i) => { imag[i + 1] = a; });
-                customWaves[type] = audioCtx.createPeriodicWave(real, imag);
-            }
-            return customWaves[type];
-        }
-
         function syncOscillators() {
             if (!audioCtx) return;
             const freq = parseFloat(ui.sliderFreq.value);
@@ -539,11 +483,7 @@
             for (const waveType of selectedWaveforms) {
                 if (!oscillators[waveType]) {
                     const osc = audioCtx.createOscillator();
-                    if (INSTRUMENTS[waveType]) {
-                        osc.setPeriodicWave(getPeriodicWave(waveType)); // 악기 파형
-                    } else {
-                        osc.type = waveType;
-                    }
+                    osc.type = waveType;
                     osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
                     const gainNode = audioCtx.createGain();
                     gainNode.gain.setValueAtTime(1 / Math.max(1, selectedWaveforms.length), audioCtx.currentTime);
@@ -680,24 +620,6 @@
         }
 
         function getWaveValue(waveform, p) {
-            // 악기 파형: 배음들을 합성해 계산 (실제 최대값으로 정규화해 진폭이 슬라이더 값과 일치)
-            const inst = INSTRUMENTS[waveform];
-            if (inst) {
-                if (!inst.peak) {
-                    let peak = 0;
-                    for (let q = 0; q < Math.PI * 2; q += 0.005) {
-                        let s = 0;
-                        inst.harmonics.forEach((a, n) => { s += a * Math.sin((n + 1) * q); });
-                        peak = Math.max(peak, Math.abs(s));
-                    }
-                    inst.peak = peak;
-                }
-                let v = 0;
-                for (let n = 0; n < inst.harmonics.length; n++) {
-                    v += inst.harmonics[n] * Math.sin((n + 1) * p);
-                }
-                return v / inst.peak;
-            }
             const normalizedPhase = ((p / (2 * Math.PI)) % 1 + 1) % 1;
             switch (waveform) {
                 case 'square': return normalizedPhase < 0.5 ? 1.0 : -1.0;
