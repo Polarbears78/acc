@@ -455,12 +455,13 @@
         const REC_LAYOUT = { margin: 20, labelH: 32, gap: 16, infoH: 36 };
 
         // 악기 파형: 배음(harmonics) 세기 비율 (n번째 값 = n배음의 상대 세기)
+        // 위 배음일수록 빠르게 약해지도록 해 교과서적인 파형 모양이 나오게 조정
         const INSTRUMENTS = {
-            violin:   { harmonics: [1, 0.7, 0.55, 0.4, 0.35, 0.25, 0.2, 0.15] },
-            clarinet: { harmonics: [1, 0.04, 0.6, 0.04, 0.35, 0.03, 0.2, 0.02] }, // 홀수 배음 위주
-            trumpet:  { harmonics: [1, 0.85, 0.7, 0.6, 0.45, 0.35, 0.25, 0.2] },
-            organ:    { harmonics: [1, 0.6, 0.3, 0.4, 0.15, 0.1, 0.05, 0.2] },
-            flute:    { harmonics: [1, 0.2, 0.08, 0.04] },
+            violin:   { harmonics: [1, 0.55, 0.35, 0.25, 0.18, 0.12, 0.08, 0.05] }, // 톱니파에 가까운 풍부한 배음
+            clarinet: { harmonics: [1, 0, 0.4, 0, 0.2, 0, 0.1, 0] },                // 홀수 배음만 (사각파 계열)
+            trumpet:  { harmonics: [1, 0.7, 0.5, 0.35, 0.25, 0.18, 0.12, 0.08] },   // 밝고 강한 배음
+            organ:    { harmonics: [1, 0.5, 0.25, 0.35, 0, 0, 0, 0.15] },           // 옥타브 배음 위주
+            flute:    { harmonics: [1, 0.15, 0.05] },                                // 기본음 위주 (사인파에 가까움)
         };
         const WAVE_NAMES = {
             sine: '사인파', square: '사각파', sawtooth: '톱니파', triangle: '삼각파',
@@ -679,15 +680,23 @@
         }
 
         function getWaveValue(waveform, p) {
-            // 악기 파형: 배음들을 합성해 계산 (배음 세기 합으로 정규화)
+            // 악기 파형: 배음들을 합성해 계산 (실제 최대값으로 정규화해 진폭이 슬라이더 값과 일치)
             const inst = INSTRUMENTS[waveform];
             if (inst) {
-                let v = 0, norm = 0;
+                if (!inst.peak) {
+                    let peak = 0;
+                    for (let q = 0; q < Math.PI * 2; q += 0.005) {
+                        let s = 0;
+                        inst.harmonics.forEach((a, n) => { s += a * Math.sin((n + 1) * q); });
+                        peak = Math.max(peak, Math.abs(s));
+                    }
+                    inst.peak = peak;
+                }
+                let v = 0;
                 for (let n = 0; n < inst.harmonics.length; n++) {
                     v += inst.harmonics[n] * Math.sin((n + 1) * p);
-                    norm += inst.harmonics[n];
                 }
-                return v / norm;
+                return v / inst.peak;
             }
             const normalizedPhase = ((p / (2 * Math.PI)) % 1 + 1) % 1;
             switch (waveform) {
