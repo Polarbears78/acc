@@ -66,7 +66,7 @@
         }
         .trigger-mode-btn {
             width: 4.5rem; /* w-18 */
-            height: 2.5rem; /* h-10 */
+            flex: 1 1 0; /* 두 버튼이 옆 재생+음소거 기둥 전체 높이를 나눠 가짐 */
         }
         .record-btn {
             width: 3.5rem;  /* 정사각형 */
@@ -293,7 +293,7 @@
                             <svg id="speakerOffIcon" class="w-4 h-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l-2.25 2.25M19.5 12l2.25-2.25M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"></path></svg>
                         </button>
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 self-stretch">
                         <button id="mode-continuous" class="trigger-mode-btn selected">연속</button>
                         <button id="mode-pulse" class="trigger-mode-btn">펄스</button>
                     </div>
@@ -615,13 +615,31 @@
         }
 
         // --- 파형 값 계산 ---
+        // 합성 파형의 최대값 캐시: 선택 조합이 바뀔 때만 다시 계산
+        let combinedPeakKey = '', combinedPeak = 1;
+        function getCombinedPeak() {
+            const key = selectedWaveforms.slice().sort().join(',');
+            if (key !== combinedPeakKey) {
+                let peak = 0;
+                for (let q = 0; q < Math.PI * 2; q += 0.005) {
+                    let s = 0;
+                    for (const w of selectedWaveforms) s += getWaveValue(w, q);
+                    peak = Math.max(peak, Math.abs(s));
+                }
+                combinedPeak = (peak / selectedWaveforms.length) || 1;
+                combinedPeakKey = key;
+            }
+            return combinedPeak;
+        }
+
         function getCombinedWave(phaseOffset) {
             if (selectedWaveforms.length === 0) return 0;
             let summedValue = 0;
             for (const waveform of selectedWaveforms) {
                 summedValue += getWaveValue(waveform, phaseOffset);
             }
-            return summedValue / selectedWaveforms.length;
+            // 평균 후 실제 최대값으로 정규화해, 합성 파형도 단일 파형처럼 최대 진폭까지 표시
+            return (summedValue / selectedWaveforms.length) / getCombinedPeak();
         }
 
         function getWaveValue(waveform, p) {
