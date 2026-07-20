@@ -9,7 +9,8 @@
     <style>
         /* Webkit 브라우저용 스크롤바 스타일 */
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
+            height: 6px; /* 가로 스크롤 막대 */
         }
         ::-webkit-scrollbar-track {
             background: #1a202c;
@@ -147,7 +148,6 @@
         }
         /* 저장소 빈 슬롯: 표시 없이 자리만 확보 */
         .placeholder-item {
-            min-height: 150px;
             visibility: hidden;
         }
         /* 갤러리 한 줄 가로 배치: 4개까지 한 화면, 넘어가면 가로 스크롤 */
@@ -158,10 +158,21 @@
             padding-bottom: 0.5rem; /* 스크롤바 자리 */
             scroll-snap-type: x proximity;
         }
+        .gallery-row::-webkit-scrollbar {
+            height: 4px; /* 갤러리 가로 스크롤 막대는 더 얇게 */
+        }
         .gallery-row > * {
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
             min-width: 220px;
+            height: 240px; /* 항목 유무와 무관하게 줄 높이 고정 (레이아웃 밀림 방지) */
             scroll-snap-align: start;
+        }
+        /* 고정 높이 안에서 미디어가 남는 공간을 채우도록 */
+        .gallery-item img, .gallery-item video {
+            width: 100%;
+            flex: 1 1 0;
+            min-height: 0;
+            object-fit: contain;
         }
         /* '전체 보기' 상태: 줄바꿈하며 전부 표시 */
         .gallery-row.expanded {
