@@ -47,9 +47,9 @@
             font-size: 0.875rem; /* text-sm */
             font-weight: 600; /* font-semibold */
             color: rgb(209 213 219); /* text-gray-300 */
-            background-color: rgb(55 65 81); /* bg-gray-700 */
+            background-color: rgba(55, 65, 81, 0.6); /* 반투명 (글자는 불투명 유지) */
             border-radius: 0.375rem; /* rounded-md */
-            border: 1px solid rgb(75 85 99); /* border border-gray-600 */
+            border: 1px solid rgba(75, 85, 99, 0.6);
             transition: all 0.15s ease;
             display: flex;
             align-items: center;
@@ -72,25 +72,25 @@
             width: 3.5rem;  /* 정사각형 */
             height: 3.5rem;
             border-radius: 0.75rem; /* 둥근 모서리 */
-            background-color: #7f1d1d; /* red-900: 대기 상태는 진한 빨강 */
-            border: 1px solid #641212;
+            background-color: rgba(127, 29, 29, 0.65); /* red-900 반투명 */
+            border: 1px solid rgba(100, 18, 18, 0.7);
             color: white;
             flex-direction: column;
             gap: 0.25rem;
         }
         .record-btn:hover {
-            background-color: #991b1b; /* red-800 */
+            background-color: rgba(153, 27, 27, 0.75); /* red-800 */
         }
         .waveform-btn:hover, .trigger-mode-btn:hover, .more-btn:hover {
-            background-color: rgb(75 85 99);
+            background-color: rgba(75, 85, 99, 0.7);
         }
         .waveform-btn.selected, .trigger-mode-btn.selected {
-            background-color: rgb(30 58 138); /* blue-900 */
+            background-color: rgba(30, 58, 138, 0.75); /* blue-900 반투명 */
             color: white;
-            border: 1px solid rgb(29 78 216); /* blue-700 */
+            border: 1px solid rgba(29, 78, 216, 0.8); /* blue-700 */
         }
         .record-btn.recording {
-            background-color: #450a0a; /* red-950: 녹화 중에는 가장 진한 빨강 */
+            background-color: rgba(69, 10, 10, 0.8); /* red-950: 녹화 중에는 가장 진한 빨강 */
             border-color: #f87171; /* red-400 테두리로 강조 */
         }
         @keyframes blink {
@@ -166,6 +166,20 @@
             flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
             min-width: 220px;
         }
+        /* 상단바 버튼 반투명 처리 (글자·아이콘은 불투명 유지) */
+        #btnToggle.bg-red-900 { background-color: rgba(127, 29, 29, 0.65); }
+        #btnToggle.bg-green-900 { background-color: rgba(20, 83, 45, 0.65); }
+        #btnMute { background-color: rgba(55, 65, 81, 0.6); }
+        #btnMute:hover { background-color: rgba(75, 85, 99, 0.7); }
+        #freqUp, #freqDown, #ampUp, #ampDown, #pulseRateUp, #pulseRateDown {
+            background-color: rgba(55, 65, 81, 0.6);
+        }
+        #freqUp:hover, #freqDown:hover, #ampUp:hover, #ampDown:hover, #pulseRateUp:hover, #pulseRateDown:hover {
+            background-color: rgba(75, 85, 99, 0.7);
+        }
+        #freqUp:active, #freqDown:active, #ampUp:active, #ampDown:active, #pulseRateUp:active, #pulseRateDown:active {
+            background-color: rgba(31, 41, 55, 0.7);
+        }
         /* 상단바: 창이 좁아지면 내용이 줄어들지 않고 가로 스크롤 */
         .header-row {
             overflow-y: hidden; /* 세로 스크롤 방지 */
@@ -182,8 +196,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: rgb(55 65 81); /* gray-700 */
-            border: 1px solid rgb(75 85 99); /* gray-600 */
+            background-color: rgba(55, 65, 81, 0.6); /* 반투명 */
+            border: 1px solid rgba(75, 85, 99, 0.6);
             border-radius: 4px;
             color: rgb(209 213 219);
             font-size: 10px;
@@ -192,7 +206,7 @@
             transition: background-color 0.15s ease;
         }
         .note-icon-btn:hover {
-            background-color: rgb(75 85 99);
+            background-color: rgba(75, 85, 99, 0.7);
         }
         .note-menu {
             display: none;
