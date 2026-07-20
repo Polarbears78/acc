@@ -776,10 +776,11 @@
             ctx.beginPath();
             for (let x = 0; x < width; x++) {
                 const wavePhase = k * (x - width / 2) + p;
-                // 점마다 위상이 다른 미세 진동: 각 점이 각자 따로 움직이는 느낌
-                const jitter = aliveLevel * 1.2
-                    * Math.sin(0.11 * x + alivePhase * 2.3)
-                    * Math.sin(0.053 * x - alivePhase * 1.4);
+                // 위치 무늬 × 시간 진동을 분리(정상파 방식): 흐르지 않고 제자리에서만 미세하게 오르내림
+                const jitter = aliveLevel * 0.7 * (
+                    Math.sin(0.11 * x) * Math.sin(alivePhase * 2.0) +
+                    Math.sin(0.057 * x + 1.3) * Math.sin(alivePhase * 1.3)
+                );
                 const y = (height / 2) + pixelAmp * getCombinedWave(wavePhase) + offset + jitter;
                 x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
@@ -797,13 +798,14 @@
                 const value = getCombinedWave(wavePhase);
                 const edgeFactor = Math.sin((i / numParticles) * Math.PI);
                 const dx = amp * edgeFactor * value + (offset * edgeFactor * 0.2);
-                // 입자마다 위상이 다른 미세 진동
-                const jx = aliveLevel * 0.9
-                    * Math.sin(0.37 * i + alivePhase * 2.1)
-                    * Math.sin(0.19 * i - alivePhase * 1.6);
+                // 입자별 제자리 미세 진동 (흐르지 않는 정상파 방식)
+                const jx = aliveLevel * 0.55 * (
+                    Math.sin(0.37 * i) * Math.sin(alivePhase * 2.1) +
+                    Math.sin(0.19 * i + 1.1) * Math.sin(alivePhase * 1.4)
+                );
                 for (let yOffset = -35; yOffset <= 35; yOffset += 10) {
                     const radius = 2.2 * (1 - Math.abs(yOffset) / 35 * 0.3);
-                    const jy = aliveLevel * 0.8 * Math.sin(0.31 * i + yOffset * 0.23 + alivePhase * 1.9);
+                    const jy = aliveLevel * 0.8 * Math.sin(0.31 * i + yOffset * 0.23) * Math.sin(alivePhase * 1.9);
                     ctx.beginPath();
                     ctx.arc(xOriginal + dx + jx, (height / 2) + yOffset + jy, radius, 0, 2 * Math.PI);
                     ctx.fill();
