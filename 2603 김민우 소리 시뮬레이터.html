@@ -145,24 +145,43 @@
         .gallery-item-actions .delete-btn:hover {
             background-color: #dc2626; /* red-600 */
         }
-        /* 저장소 빈 슬롯 (아직 저장된 항목이 없을 때 자리를 미리 보여줌) */
+        /* 저장소 빈 슬롯: 표시 없이 자리만 확보 */
         .placeholder-item {
-            border: 2px dashed #374151; /* gray-700 */
-            border-radius: 0.5rem;
             min-height: 150px;
+            visibility: hidden;
+        }
+        /* 갤러리 한 줄 가로 배치: 4개까지 한 화면, 넘어가면 가로 스크롤 */
+        .gallery-row {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            color: #4b5563; /* gray-600 */
+            gap: 1.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem; /* 스크롤바 자리 */
+            scroll-snap-type: x proximity;
+        }
+        .gallery-row > * {
+            flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
+            min-width: 220px;
+            scroll-snap-align: start;
+        }
+        /* '전체 보기' 상태: 줄바꿈하며 전부 표시 */
+        .gallery-row.expanded {
+            flex-wrap: wrap;
+            overflow-x: visible;
+        }
+        /* 알약 형태 버튼 */
+        .pill-btn {
             font-size: 0.8rem;
             font-weight: 600;
+            color: rgb(209 213 219); /* gray-300 */
+            background-color: rgb(55 65 81); /* gray-700 */
+            border: 1px solid rgb(75 85 99); /* gray-600 */
+            border-radius: 9999px;
+            padding: 0.3rem 1rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
         }
-        .placeholder-item svg {
-            width: 2rem;
-            height: 2rem;
-            opacity: 0.6;
+        .pill-btn:hover {
+            background-color: rgb(75 85 99);
         }
         /* 헤더 반투명 효과 */
         header {
@@ -299,13 +318,19 @@
         <section id="storage-section" class="w-full bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg">
             <h2 class="text-2xl font-bold text-white mb-4 ml-4">저장소</h2>
 
-            <h3 class="text-xl font-semibold text-gray-300 mt-2 mb-3 ml-4">이미지</h3>
-            <div id="gallery-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div class="flex justify-between items-center mt-2 mb-3">
+                <h3 class="text-xl font-semibold text-gray-300 ml-4">이미지</h3>
+                <button id="expand-images-btn" class="pill-btn">전체 보기</button>
+            </div>
+            <div id="gallery-container" class="gallery-row">
                 <!-- 캡처된 이미지가 여기에 추가됩니다. -->
             </div>
 
-            <h3 class="text-xl font-semibold text-gray-300 mt-8 mb-3 ml-4">동영상</h3>
-            <div id="video-gallery-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div class="flex justify-between items-center mt-8 mb-3">
+                <h3 class="text-xl font-semibold text-gray-300 ml-4">동영상</h3>
+                <button id="expand-videos-btn" class="pill-btn">전체 보기</button>
+            </div>
+            <div id="video-gallery-container" class="gallery-row">
                 <!-- 캡처된 동영상이 여기에 추가됩니다. -->
             </div>
         </section>
@@ -765,22 +790,16 @@
         }
 
         // --- 저장소 빈 슬롯 관리 ---
-        // 실제 항목 수와 무관하게 갤러리에 최소 4칸이 보이도록 빈 슬롯을 채움
+        // 저장된 항목이 없어도 한 줄(4칸) 높이의 자리를 보이지 않게 확보
         const PLACEHOLDER_MIN_SLOTS = 4;
-        const PLACEHOLDER_ICONS = {
-            image: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V4.5a1.5 1.5 0 00-1.5-1.5H3.75a1.5 1.5 0 00-1.5 1.5v15a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V9.75z"/></svg>',
-            video: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>'
-        };
-        const PLACEHOLDER_LABELS = { image: '이미지 저장 공간', video: '동영상 저장 공간' };
 
-        function updatePlaceholders(container, type) {
+        function updatePlaceholders(container) {
             container.querySelectorAll('.placeholder-item').forEach(el => el.remove());
             const realCount = container.children.length;
             const needed = Math.max(0, PLACEHOLDER_MIN_SLOTS - realCount);
             for (let i = 0; i < needed; i++) {
                 const ph = document.createElement('div');
                 ph.className = 'placeholder-item';
-                ph.innerHTML = `${PLACEHOLDER_ICONS[type]}<span>${PLACEHOLDER_LABELS[type]}</span>`;
                 container.appendChild(ph);
             }
         }
@@ -818,7 +837,7 @@
             deleteBtn.textContent = '삭제';
             deleteBtn.addEventListener('click', () => {
                 galleryItem.remove();
-                updatePlaceholders(ui.galleryContainer, 'image');
+                updatePlaceholders(ui.galleryContainer);
             });
 
             actionsDiv.appendChild(downloadBtn);
@@ -828,7 +847,7 @@
             galleryItem.appendChild(actionsDiv);
 
             ui.galleryContainer.prepend(galleryItem);
-            updatePlaceholders(ui.galleryContainer, 'image');
+            updatePlaceholders(ui.galleryContainer);
         }
 
         function addVideoToGallery(videoURL) {
@@ -868,7 +887,7 @@
             deleteBtn.addEventListener('click', () => {
                 galleryItem.remove();
                 URL.revokeObjectURL(videoURL);
-                updatePlaceholders(ui.videoGalleryContainer, 'video');
+                updatePlaceholders(ui.videoGalleryContainer);
             });
 
             actionsDiv.appendChild(downloadBtn);
@@ -878,7 +897,7 @@
             galleryItem.appendChild(actionsDiv);
 
             ui.videoGalleryContainer.prepend(galleryItem);
-            updatePlaceholders(ui.videoGalleryContainer, 'video');
+            updatePlaceholders(ui.videoGalleryContainer);
         }
 
         // --- 녹화 기능 ---
@@ -1050,6 +1069,16 @@
                 });
             });
 
+            // '전체 보기' 알약 버튼: 가로 스크롤 한 줄 ↔ 전체 펼침 전환
+            function setupExpandToggle(button, container) {
+                button.addEventListener('click', () => {
+                    const expanded = container.classList.toggle('expanded');
+                    button.textContent = expanded ? '접기' : '전체 보기';
+                });
+            }
+            setupExpandToggle(document.getElementById('expand-images-btn'), ui.galleryContainer);
+            setupExpandToggle(document.getElementById('expand-videos-btn'), ui.videoGalleryContainer);
+
             window.addEventListener('resize', resizeCanvas);
             updateSliderTrack(ui.sliderFreq);
             updateSliderTrack(ui.sliderAmp);
@@ -1060,8 +1089,8 @@
         // --- 초기화 ---
         resizeCanvas();
         setupEventListeners();
-        updatePlaceholders(ui.galleryContainer, 'image');
-        updatePlaceholders(ui.videoGalleryContainer, 'video');
+        updatePlaceholders(ui.galleryContainer);
+        updatePlaceholders(ui.videoGalleryContainer);
         render();
     </script>
 </body>
