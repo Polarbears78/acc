@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>파동 시뮬레이터 - 김민우</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Webkit 브라우저용 스크롤바 스타일 */
+        ::-webkit-scrollbar {
+            width: 4px;  /* 세로 스크롤 막대 (저장소 가로 막대와 동일 두께) */
+            height: 4px; /* 가로 스크롤 막대 */
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a202c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        /* 슬라이더 썸 커스텀 스타일 */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px; /* 알약 형태로 변경 (더 짧게) */
+            height: 12px; /* 알약 형태로 변경 (더 두껍게) */
+            border-radius: 9999px; /* 알약 형태로 변경 */
+            background: white; /* 흰색 */
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        /* 숫자 입력 필드 화살표 숨기기 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        /* 버튼 공통 스타일 */
+        .waveform-btn, .trigger-mode-btn, .more-btn, .record-btn {
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 600; /* font-semibold */
+            color: rgb(209 213 219); /* text-gray-300 */
+            background-color: rgba(55, 65, 81, 0.6); /* 반투명 (글자는 불투명 유지) */
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid rgba(75, 85, 99, 0.6);
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0 0.75rem;
+        }
+        .waveform-btn {
+            width: 6rem; /* w-24 */
+            height: 2rem; /* h-8 */
+            justify-content: flex-start;
+            gap: 0.5rem;
+            white-space: nowrap; /* 줄바꿈 방지 */
+        }
+        .trigger-mode-btn {
+            width: 4.5rem; /* w-18 */
+            flex: 1 1 0; /* 두 버튼이 옆 재생+음소거 기둥 전체 높이를 나눠 가짐 */
+        }
+        .record-btn {
+            width: 3.5rem;  /* 정사각형 */
+            height: 3.5rem;
+            border-radius: 0.75rem; /* 둥근 모서리 */
+            background-color: rgba(127, 29, 29, 0.65); /* red-900 반투명 */
+            border: 1px solid rgba(100, 18, 18, 0.7);
+            color: white;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .record-btn:hover {
+            background-color: rgba(153, 27, 27, 0.75); /* red-800 */
+        }
+        .waveform-btn:hover, .trigger-mode-btn:hover, .more-btn:hover {
+            background-color: rgba(75, 85, 99, 0.7);
+        }
+        .waveform-btn.selected, .trigger-mode-btn.selected {
+            background-color: rgba(30, 58, 138, 0.75); /* blue-900 반투명 */
+            color: white;
+            border: 1px solid rgba(29, 78, 216, 0.8); /* blue-700 */
+        }
+        .record-btn.recording {
+            background-color: rgba(69, 10, 10, 0.8); /* red-950: 녹화 중에는 가장 진한 빨강 */
+            border-color: #f87171; /* red-400 테두리로 강조 */
+        }
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+        .record-btn.recording .record-text {
+            animation: blink 1s infinite;
+        }
+        .control-group[disabled] {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .gallery-item {
+            background-color: #1a202c; /* bg-gray-900 */
+            border: 1px solid #2d3748; /* border-gray-800 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .gallery-item img, .gallery-item video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.25rem;
+            border: 1px solid #4a5568;
+        }
+        .gallery-item-info {
+            font-size: 0.875rem; /* text-sm */
+            color: #cbd5e0; /* text-gray-300 */
+        }
+        .gallery-item-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .gallery-item-actions button {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.15s ease;
+        }
+        .gallery-item-actions .download-btn {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .gallery-item-actions .download-btn:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+        .gallery-item-actions .delete-btn {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+        }
+        .gallery-item-actions .delete-btn:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        /* 저장소 빈 슬롯: 표시 없이 자리만 확보 */
+        .placeholder-item {
+            visibility: hidden;
+        }
+        /* 갤러리 한 줄 가로 배치: 4개까지 한 화면, 넘어가면 가로 스크롤 */
+        .gallery-row {
+            display: flex;
+            gap: 1.5rem;
+            overflow-x: scroll; /* 스크롤바 공간을 항상 확보해 항목이 늘어나도 아래로 밀리지 않음 */
+            padding-bottom: 0.5rem;
+        }
+        .gallery-row::-webkit-scrollbar-track {
+            background: transparent; /* 스크롤할 내용이 없을 땐 막대가 보이지 않도록 */
+        }
+        .gallery-row > * {
+            flex: 0 0 calc((100% - 4.5rem) / 4); /* 간격 1.5rem × 3 제외하고 4등분 */
+            min-width: 220px;
+        }
+        /* 상단바 버튼 반투명 처리 (글자·아이콘은 불투명 유지) */
+        #btnToggle.bg-red-900 { background-color: rgba(127, 29, 29, 0.65); }
+        #btnToggle.bg-green-900 { background-color: rgba(20, 83, 45, 0.65); }
+        #btnMute { background-color: rgba(55, 65, 81, 0.6); }
+        #btnMute:hover { background-color: rgba(75, 85, 99, 0.7); }
+        #freqUp, #freqDown, #ampUp, #ampDown, #pulseRateUp, #pulseRateDown {
+            background-color: rgba(55, 65, 81, 0.6);
+        }
+        #freqUp:hover, #freqDown:hover, #ampUp:hover, #ampDown:hover, #pulseRateUp:hover, #pulseRateDown:hover {
+            background-color: rgba(75, 85, 99, 0.7);
+        }
+        #freqUp:active, #freqDown:active, #ampUp:active, #ampDown:active, #pulseRateUp:active, #pulseRateDown:active {
+            background-color: rgba(31, 41, 55, 0.7);
+        }
+        /* 상단바: 창이 좁아지면 내용이 줄어들지 않고 가로 스크롤 */
+        .header-row {
+            overflow-y: hidden; /* 세로 스크롤 방지 */
+            padding-top: 4px;
+            padding-bottom: 6px; /* 슬라이더 알약 썸이 잘리지 않도록 여유 공간 */
+        }
+        .header-row > * {
+            flex-shrink: 0; /* 자식이 찌그러지지 않아야 가로로 넘쳐 스크롤이 생김 */
+        }
+        /* 음계 선택 아이콘 버튼과 메뉴 (클릭으로 열림) */
+        .note-icon-btn {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(55, 65, 81, 0.6); /* 반투명 */
+            border: 1px solid rgba(75, 85, 99, 0.6);
+            border-radius: 4px;
+            color: rgb(209 213 219);
+            font-size: 10px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .note-icon-btn:hover {
+            background-color: rgba(75, 85, 99, 0.7);
+        }
+        .note-menu {
+            display: none;
+            position: fixed; /* 헤더 스크롤 영역에 갇히지 않도록 화면 기준 배치 (위치는 JS가 계산) */
+            z-index: 70;
+            flex-direction: column;
+            gap: 4px;
+            background-color: rgba(31, 41, 55, 0.3); /* 반투명 배경 (창은 더 투명하게) */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(75, 85, 99, 0.7);
+            border-radius: 0.5rem;
+            padding: 6px;
+            width: max-content;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        .note-menu.open {
+            display: flex;
+        }
+        .note-set {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .note-set + .note-set {
+            margin-top: 4px;
+            padding-top: 6px;
+            border-top: 1px solid rgb(55 65 81); /* 세트 사이 구분선 */
+        }
+        .note-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 윗줄 도레미파, 아랫줄 솔라시 */
+            gap: 4px;
+        }
+        .note-octave {
+            font-size: 10px;
+            font-weight: 600;
+            color: #9ca3af; /* gray-400 */
+        }
+        .note-menu button {
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            background-color: rgba(55, 65, 81, 0.6); /* 버튼은 창보다 덜 투명하게 */
+            border: 1px solid rgba(75, 85, 99, 0.6);
+            border-radius: 4px;
+            color: rgb(209 213 219);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.15s ease;
+        }
+        /* 파형 중첩 토글 스위치 */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 28px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch-slider {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            background-color: #4b5563; /* gray-600 */
+            border-radius: 9999px;
+            transition: background-color 0.2s ease;
+        }
+        .switch-slider::before {
+            content: '';
+            position: absolute;
+            width: 14px;  /* 슬라이더 썸과 같은 알약 형태 (살짝 축소) */
+            height: 10px;
+            left: 2px;
+            top: 2px;
+            background-color: white;
+            border-radius: 9999px;
+            transition: transform 0.2s ease;
+        }
+        .switch input:checked + .switch-slider {
+            background-color: #3b82f6; /* blue-500 */
+        }
+        .switch input:checked + .switch-slider::before {
+            transform: translateX(10px);
+        }
+        /* 비교 다운로드 버튼 활성(1~3개 선택) 상태 */
+        .pill-btn.active {
+            background-color: #2563eb; /* blue-600 */
+            border-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .pill-btn.active:hover {
+            background-color: #1d4ed8; /* blue-700 */
+        }
+        /* 미디어 표시 영역: 사진과 동영상의 세로 길이를 동일하게 맞춤 */
+        .gallery-item video {
+            width: 100%;
+            aspect-ratio: 2.2 / 1;
+            object-fit: contain;
+        }
+        .media-box {
+            width: 100%;
+            aspect-ratio: 2.2 / 1; /* 동영상 표시 영역과 같은 세로 길이 */
+            display: flex;
+            flex-direction: column;
+        }
+        .media-box img {
+            width: 100%;
+            height: auto;
+            margin: auto 0; /* 체크박스와 설명 사이 남는 공간의 세로 중앙에 배치 */
+        }
+        /* 사진 위쪽에 놓이는 선택 체크박스 */
+        .select-box {
+            display: flex;
+            align-items: center;
+            padding-bottom: 0.3rem;
+            cursor: pointer;
+        }
+        .select-box input[type=checkbox] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 0.45rem; /* 둥근 모서리 네모칸 */
+            border: 2px solid rgba(255, 255, 255, 0.75);
+            background-color: rgba(3, 7, 18, 0.55);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .select-box input[type=checkbox]:hover {
+            border-color: #60a5fa; /* blue-400 */
+        }
+        .select-box input[type=checkbox]:checked {
+            background-color: #3b82f6; /* blue-500 */
+            border-color: #3b82f6;
+            /* 끝이 둥근 획의 체크 표시 */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+            background-size: 80%;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .gallery-item {
+            position: relative; /* 체크박스 오버레이 기준 */
+        }
+        .gallery-item:has(.select-box input:checked) {
+            border-color: #3b82f6;
+        }
+        /* '전체 보기' 상태: 줄바꿈하며 전부 표시 */
+        .gallery-row.expanded {
+            flex-wrap: wrap;
+            overflow-x: visible;
+        }
+        /* 알약 형태 버튼 */
+        .pill-btn {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: rgb(209 213 219); /* gray-300 */
+            background-color: rgb(55 65 81); /* gray-700 */
+            border: 1px solid rgb(75 85 99); /* gray-600 */
+            border-radius: 9999px;
+            padding: 0.3rem 1rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .pill-btn:hover {
+            background-color: rgb(75 85 99);
+        }
+        /* 헤더 반투명 효과 */
+        header {
+            position: sticky; /* 스크롤 시 상단에 고정 */
+            top: 0;
+            isolation: isolate; /* z-index 컨텍스트 분리 */
+        }
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(17, 24, 39, 0.55); /* 아래로 지나가는 콘텐츠가 비쳐 보이도록 투명도 상향 */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            z-index: -1; /* 헤더 내용물 뒤로 보내기 */
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col select-none">
+
+    <!-- 상단 헤더 -->
+    <header class="px-6 py-4 flex-shrink-0 z-50 shadow-md">
+        <div class="header-row max-w-7xl mx-auto flex flex-nowrap items-center justify-between gap-4 overflow-x-auto">
+
+            <div class="flex flex-col text-left">
+                <h1 class="text-2xl font-bold tracking-tight text-white">파동 시뮬레이터</h1>
+                <p class="text-sm text-gray-400 font-normal tracking-wide mt-0.5">김민우</p>
+            </div>
+
+            <div class="flex items-center gap-4 sm:gap-6">
+
+                <div class="flex items-end gap-2">
+                    <div class="flex flex-col items-center gap-2">
+                        <button id="btnToggle" class="w-14 h-14 rounded-md bg-red-900 border border-red-700 text-white transition-all duration-200 shadow-lg flex items-center justify-center flex-shrink-0" title="소리 시작/정지">
+                            <svg id="playIcon" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+                            <svg id="stopIcon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+                        </button>
+                        <button id="btnMute" class="w-14 h-5 rounded-md bg-gray-700 border border-gray-600 text-white transition-colors duration-200 flex items-center justify-center" title="음소거">
+                            <svg id="speakerOnIcon" class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"></path></svg>
+                            <svg id="speakerOffIcon" class="w-4 h-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l-2.25 2.25M19.5 12l2.25-2.25M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="flex flex-col gap-2 self-stretch">
+                        <button id="mode-continuous" class="trigger-mode-btn selected">연속</button>
+                        <button id="mode-pulse" class="trigger-mode-btn">펄스</button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-col w-72 sm:w-80 control-group">
+                        <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                            <div class="flex items-center gap-1.5 relative">
+                                <span class="text-gray-400">진동수</span>
+                                <button id="noteMenuBtn" class="note-icon-btn" title="음계로 진동수 설정">♪</button>
+                                <div id="noteMenu" class="note-menu">
+                                    <div class="note-set">
+                                        <span class="note-octave">3옥타브</span>
+                                        <div class="note-grid">
+                                            <button data-freq="131">도 (131)</button><button data-freq="147">레 (147)</button><button data-freq="165">미 (165)</button><button data-freq="175">파 (175)</button>
+                                            <button data-freq="196">솔 (196)</button><button data-freq="220">라 (220)</button><button data-freq="247">시 (247)</button>
+                                        </div>
+                                    </div>
+                                    <div class="note-set">
+                                        <span class="note-octave">4옥타브</span>
+                                        <div class="note-grid">
+                                            <button data-freq="262">도 (262)</button><button data-freq="294">레 (294)</button><button data-freq="330">미 (330)</button><button data-freq="349">파 (349)</button>
+                                            <button data-freq="392">솔 (392)</button><button data-freq="440">라 (440)</button><button data-freq="494">시 (494)</button>
+                                        </div>
+                                    </div>
+                                    <div class="note-set">
+                                        <span class="note-octave">5옥타브</span>
+                                        <div class="note-grid">
+                                            <button data-freq="523">도 (523)</button><button data-freq="587">레 (587)</button><button data-freq="659">미 (659)</button><button data-freq="698">파 (698)</button>
+                                            <button data-freq="784">솔 (784)</button><button data-freq="880">라 (880)</button><button data-freq="988">시 (988)</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-0.5">
+                                <input type="number" id="freqInput" min="1" max="20000" value="250" class="bg-gray-800 text-blue-400 font-mono w-14 text-right rounded-md px-2 py-0.5 border border-gray-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex flex-col"><button id="freqUp" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-t-md leading-none">▲</button><button id="freqDown" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-b-md leading-none">▼</button></div>
+                                <span class="text-gray-400 font-mono">Hz</span>
+                            </div>
+                        </div>
+                        <input type="range" id="sliderFreq" min="1" max="20000" value="250" step="1" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <div class="flex flex-col w-72 sm:w-80 control-group">
+                        <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                            <span class="text-gray-400 w-12">진폭</span>
+                            <div class="flex items-center gap-0.5">
+                                <input type="number" id="ampInput" min="0" max="100" value="50" class="bg-gray-800 text-blue-400 font-mono w-14 text-right rounded-md px-2 py-0.5 border border-gray-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex flex-col"><button id="ampUp" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-t-md leading-none">▲</button><button id="ampDown" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-b-md leading-none">▼</button></div>
+                                <span class="text-gray-400 font-mono">%&nbsp;</span>
+                            </div>
+                        </div>
+                        <input type="range" id="sliderAmp" min="0" max="100" value="50" step="1" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <div id="pulse-rate-control" class="flex flex-col w-72 sm:w-80 control-group">
+                        <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                            <span class="text-gray-400 w-12">펄스 속도</span>
+                            <div class="flex items-center gap-0.5">
+                                <input type="number" id="pulseRateInput" min="0.5" max="10" step="0.1" value="2" class="bg-gray-800 text-blue-400 font-mono w-14 text-right rounded-md px-2 py-0.5 border border-gray-700 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex flex-col"><button id="pulseRateUp" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-t-md leading-none">▲</button><button id="pulseRateDown" class="w-[14px] h-[11px] bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-300 text-[8px] flex items-center justify-center rounded-b-md leading-none">▼</button></div>
+                                <span class="text-gray-400 font-mono">Hz</span>
+                            </div>
+                        </div>
+                        <input type="range" id="sliderPulseRate" min="0.5" max="10" step="0.1" value="2" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <div class="flex flex-col">
+                        <div class="flex items-center justify-between mb-1 gap-3">
+                            <span class="text-xs font-semibold text-gray-400">파형 (주요 파형)</span>
+                            <label class="flex items-center gap-1.5 cursor-pointer" title="켜면 여러 파형을 겹쳐 합성할 수 있습니다">
+                                <span class="text-[11px] font-semibold text-gray-400">파형 중첩</span>
+                                <span class="switch"><input type="checkbox" id="overlapToggle"><span class="switch-slider"></span></span>
+                            </label>
+                        </div>
+                        <div class="flex items-stretch gap-2">
+                            <div class="flex flex-col">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button id="sine" data-wavetype="main" class="waveform-btn selected"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12C6 2 18 2 22 12"></path></svg><span>사인파</span></button>
+                                    <button id="square" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12H8V2H16V22H22"></path></svg><span>사각파</span></button>
+                                    <button id="sawtooth" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 2L22 22"></path></svg><span>톱니파</span></button>
+                                    <button id="triangle" data-wavetype="main" class="waveform-btn"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12L7 2L17 22L22 12"></path></svg><span>삼각파</span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="btnRecord" class="record-btn">
+                        <span class="record-text">녹화</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="flex-1 w-full">
+        <div class="max-w-7xl mx-auto p-6 flex flex-col gap-6 items-center">
+        <div class="w-full bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-lg relative">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-semibold text-cyan-400 ml-4">횡파</h2>
+                <button id="capture-transverse-btn" class="pill-btn">
+                    <span>자동 스크린샷</span>
+                </button>
+            </div>
+            <canvas id="transverseCanvas" class="w-full h-[200px]"></canvas>
+        </div>
+        <div class="w-full bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-lg relative">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-semibold text-rose-500 ml-4">종파(소밀파)</h2>
+                <button id="capture-longitudinal-btn" class="pill-btn">
+                    <span>자동 스크린샷</span>
+                </button>
+            </div>
+            <canvas id="longitudinalCanvas" class="w-full h-[200px]"></canvas>
+        </div>
+
+        <canvas id="compositingCanvas" class="hidden"></canvas>
+
+        <section id="storage-section" class="w-full bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg">
+            <h2 class="text-2xl font-bold text-white mb-4 ml-4">저장소</h2>
+
+            <div class="flex justify-between items-center mt-2 mb-3">
+                <h3 class="text-xl font-semibold text-gray-300 ml-4">이미지</h3>
+                <div class="flex items-center gap-2">
+                    <button id="download-selected-btn" class="pill-btn">비교 다운로드 (0/3)</button>
+                    <button id="expand-images-btn" class="pill-btn">전체 보기</button>
+                </div>
+            </div>
+            <div id="gallery-container" class="gallery-row">
+                <!-- 캡처된 이미지가 여기에 추가됩니다. -->
+            </div>
+
+            <div class="flex justify-between items-center mt-8 mb-3">
+                <h3 class="text-xl font-semibold text-gray-300 ml-4">동영상</h3>
+                <button id="expand-videos-btn" class="pill-btn">전체 보기</button>
+            </div>
+            <div id="video-gallery-container" class="gallery-row">
+                <!-- 캡처된 동영상이 여기에 추가됩니다. -->
+            </div>
+        </section>
+        </div>
+    </main>
+
+    <script>
+        // --- 상태 변수 ---
+        let audioCtx = null, masterGain = null;
+        const oscillators = {}; // 동적 관리를 위해 빈 객체로 시작
+
+        let isPlaying = false;
+        let isMuted = false;
+        let triggerMode = 'continuous';
+        let pulseIntervalId = null;
+        let selectedWaveforms = ['sine'];
+        let phase = 0, visualAmp = 0, visualPulsePhase = 0;
+        let alivePhase = 0, aliveLevel = 0; // 재생 중 제자리 떨림 효과용
+        let animationFrameId;
+
+        let isRecording = false;
+        let mediaRecorder = null;
+        let videoChunks = [];
+        // 녹화 영상 레이아웃 (여백, 제목 높이, 그래프 사이 간격, 하단 정보 높이)
+        const REC_LAYOUT = { margin: 20, labelH: 32, gap: 16, infoH: 36 };
+
+        const WAVE_NAMES = { sine: '사인파', square: '사각파', sawtooth: '톱니파', triangle: '삼각파' };
+        let mediaStreamDestination = null; // 녹화용 오디오 스트림
+        let recordingGain = null; // 음소거와 무관하게 녹화 소리를 담는 게인
+
+        // --- DOM 요소 ---
+        const ui = {
+            btnToggle: document.getElementById('btnToggle'),
+            playIcon: document.getElementById('playIcon'),
+            stopIcon: document.getElementById('stopIcon'),
+            btnMute: document.getElementById('btnMute'),
+            speakerOnIcon: document.getElementById('speakerOnIcon'),
+            speakerOffIcon: document.getElementById('speakerOffIcon'),
+            triggerModeButtons: document.querySelectorAll('.trigger-mode-btn'),
+            sliderFreq: document.getElementById('sliderFreq'),
+            freqInput: document.getElementById('freqInput'),
+            sliderAmp: document.getElementById('sliderAmp'),
+            ampInput: document.getElementById('ampInput'),
+            pulseRateControl: document.getElementById('pulse-rate-control'),
+            sliderPulseRate: document.getElementById('sliderPulseRate'),
+            pulseRateInput: document.getElementById('pulseRateInput'),
+            waveformButtons: document.querySelectorAll('.waveform-btn'),
+            captureTransverseBtn: document.getElementById('capture-transverse-btn'),
+            captureLongitudinalBtn: document.getElementById('capture-longitudinal-btn'),
+            galleryContainer: document.getElementById('gallery-container'),
+            videoGalleryContainer: document.getElementById('video-gallery-container'),
+            transverseCanvas: document.getElementById('transverseCanvas'),
+            longitudinalCanvas: document.getElementById('longitudinalCanvas'),
+            compositingCanvas: document.getElementById('compositingCanvas'),
+            btnRecord: document.getElementById('btnRecord'),
+            recordText: document.querySelector('.record-text'),
+        };
+        const ctxTransverse = ui.transverseCanvas.getContext('2d');
+        const ctxLongitudinal = ui.longitudinalCanvas.getContext('2d');
+        const ctxCompositing = ui.compositingCanvas.getContext('2d');
+
+        // --- 설정·저장소 영구 보존 (localStorage + IndexedDB, 서버 불필요) ---
+        // 재생/녹화 상태는 저장하지 않음 — 페이지는 항상 정지 상태로 시작
+        const SETTINGS_KEY = 'waveSimSettings';
+        let db = null;
+        let restoredOverlap = false;
+
+        function saveSettings() {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                    isMuted,
+                    triggerMode,
+                    freq: ui.sliderFreq.value,
+                    amp: ui.sliderAmp.value,
+                    pulseRate: ui.sliderPulseRate.value,
+                    selectedWaveforms,
+                    overlap: document.getElementById('overlapToggle').checked,
+                }));
+            } catch (e) { /* 저장이 실패해도 동작에는 지장 없음 */ }
+        }
+
+        function loadSettings() {
+            try {
+                const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+                if (!s) return;
+                if (s.freq) { ui.sliderFreq.value = s.freq; ui.freqInput.value = s.freq; }
+                if (s.amp !== undefined) { ui.sliderAmp.value = s.amp; ui.ampInput.value = s.amp; }
+                if (s.pulseRate) { ui.sliderPulseRate.value = s.pulseRate; ui.pulseRateInput.value = s.pulseRate; }
+                if (Array.isArray(s.selectedWaveforms)) {
+                    const valid = s.selectedWaveforms.filter(w => WAVE_NAMES[w]);
+                    if (valid.length) selectedWaveforms = valid;
+                }
+                isMuted = !!s.isMuted;
+                if (s.triggerMode === 'pulse' || s.triggerMode === 'continuous') triggerMode = s.triggerMode;
+                restoredOverlap = !!s.overlap;
+            } catch (e) {}
+        }
+
+        function applyRestoredState() {
+            ui.waveformButtons.forEach(b => b.classList.toggle('selected', selectedWaveforms.includes(b.id)));
+            ui.triggerModeButtons.forEach(b => b.classList.toggle('selected', b.id === 'mode-' + triggerMode));
+            ui.speakerOnIcon.classList.toggle('hidden', isMuted);
+            ui.speakerOffIcon.classList.toggle('hidden', !isMuted);
+            ui.pulseRateControl.toggleAttribute('disabled', triggerMode !== 'pulse');
+            document.getElementById('overlapToggle').checked = restoredOverlap;
+        }
+
+        function openDB() {
+            return new Promise((resolve) => {
+                if (!window.indexedDB) return resolve(null);
+                const req = indexedDB.open('waveSimDB', 1);
+                req.onupgradeneeded = () => {
+                    const d = req.result;
+                    if (!d.objectStoreNames.contains('images')) d.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+                    if (!d.objectStoreNames.contains('videos')) d.createObjectStore('videos', { keyPath: 'id', autoIncrement: true });
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            });
+        }
+        function dbAdd(storeName, record) {
+            return new Promise((resolve) => {
+                if (!db) return resolve(null);
+                try {
+                    const req = db.transaction(storeName, 'readwrite').objectStore(storeName).add(record);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                } catch (e) { resolve(null); }
+            });
+        }
+        function dbDelete(storeName, id) {
+            if (!db || id === null || id === undefined) return;
+            try { db.transaction(storeName, 'readwrite').objectStore(storeName).delete(id); } catch (e) {}
+        }
+        function dbGetAll(storeName) {
+            return new Promise((resolve) => {
+                if (!db) return resolve([]);
+                try {
+                    const req = db.transaction(storeName, 'readonly').objectStore(storeName).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                } catch (e) { resolve([]); }
+            });
+        }
+
+        function restoreGalleries() {
+            openDB().then(async (d) => {
+                db = d;
+                if (!db) return;
+                const images = await dbGetAll('images');
+                images.sort((a, b) => a.id - b.id);
+                for (const rec of images) {
+                    addToGallery(rec.dataURL, rec.title, { time: new Date(rec.time), dbId: rec.id });
+                }
+                const videos = await dbGetAll('videos');
+                videos.sort((a, b) => a.id - b.id);
+                for (const rec of videos) {
+                    addVideoToGallery(URL.createObjectURL(rec.blob), { time: new Date(rec.time), dbId: rec.id });
+                }
+            });
+        }
+
+        // --- 오디오 초기화 ---
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // 스피커 출력 경로 (음소거/재생 상태의 영향을 받음)
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            masterGain.connect(audioCtx.destination);
+
+            // 녹화 출력 경로 (음소거의 영향을 받지 않음)
+            mediaStreamDestination = audioCtx.createMediaStreamDestination();
+            recordingGain = audioCtx.createGain();
+            recordingGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            recordingGain.connect(mediaStreamDestination);
+
+            syncOscillators();
+        }
+
+        function syncOscillators() {
+            if (!audioCtx) return;
+            const freq = parseFloat(ui.sliderFreq.value);
+
+            for (const waveType of selectedWaveforms) {
+                if (!oscillators[waveType]) {
+                    const osc = audioCtx.createOscillator();
+                    osc.type = waveType;
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    const gainNode = audioCtx.createGain();
+                    gainNode.gain.setValueAtTime(1 / Math.max(1, selectedWaveforms.length), audioCtx.currentTime);
+                    osc.connect(gainNode);
+                    gainNode.connect(masterGain);    // 스피커 경로
+                    gainNode.connect(recordingGain); // 녹화 경로
+                    osc.start();
+                    oscillators[waveType] = { osc, gainNode };
+                }
+            }
+
+            for (const waveType in oscillators) {
+                if (!selectedWaveforms.includes(waveType)) {
+                    const { osc, gainNode } = oscillators[waveType];
+                    gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                    osc.stop(audioCtx.currentTime + 0.1);
+                    setTimeout(() => {
+                        osc.disconnect();
+                        gainNode.disconnect();
+                    }, 200);
+                    delete oscillators[waveType];
+                }
+            }
+
+            // 파형 수가 바뀌면 합산 음량이 커지지 않도록 개별 게인을 다시 배분
+            const perOscGain = 1 / Math.max(1, selectedWaveforms.length);
+            for (const { gainNode } of Object.values(oscillators)) {
+                gainNode.gain.setTargetAtTime(perOscGain, audioCtx.currentTime, 0.02);
+            }
+            updateAudioParams();
+        }
+
+        // --- 오디오 파라미터 업데이트 ---
+        function updateAudioParams() {
+            if (!audioCtx) return;
+
+            const freq = parseFloat(ui.sliderFreq.value);
+            for (const { osc } of Object.values(oscillators)) {
+                osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
+            }
+
+            if (triggerMode === 'continuous') {
+                const baseGain = isPlaying ? (parseFloat(ui.sliderAmp.value) / 100) * 0.25 : 0;
+                masterGain.gain.setTargetAtTime(isMuted ? 0 : baseGain, audioCtx.currentTime, 0.05);
+                recordingGain.gain.setTargetAtTime(baseGain, audioCtx.currentTime, 0.05);
+            }
+        }
+
+        function triggerPulse() {
+            if (!audioCtx) return;
+            const pulseGain = (parseFloat(ui.sliderAmp.value) / 100) * 0.25;
+
+            // 녹화 경로: 음소거와 무관하게 펄스를 기록
+            recordingGain.gain.cancelScheduledValues(audioCtx.currentTime);
+            recordingGain.gain.setTargetAtTime(pulseGain, audioCtx.currentTime, 0.01);
+            recordingGain.gain.setTargetAtTime(0, audioCtx.currentTime + 0.1, 0.08);
+
+            // 스피커 경로
+            masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+            if (isMuted) {
+                masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+            } else {
+                masterGain.gain.setTargetAtTime(pulseGain, audioCtx.currentTime, 0.01);
+                masterGain.gain.setTargetAtTime(0, audioCtx.currentTime + 0.1, 0.08);
+            }
+        }
+
+        function stopPulse() {
+            if (pulseIntervalId) {
+                clearInterval(pulseIntervalId);
+                pulseIntervalId = null;
+            }
+        }
+
+        function startPulse() {
+            stopPulse();
+            triggerPulse();
+            const pulseRateHz = parseFloat(ui.pulseRateInput.value);
+            const intervalMs = 1000 / pulseRateHz;
+            pulseIntervalId = setInterval(triggerPulse, intervalMs);
+        }
+
+        // --- 재생/정지 핸들러 ---
+        function handlePlay() {
+            isPlaying = !isPlaying;
+            if (isPlaying && !audioCtx) initAudio();
+
+            if (isPlaying) {
+                if (triggerMode === 'pulse') {
+                    startPulse();
+                } else {
+                    updateAudioParams();
+                }
+            } else {
+                stopPulse();
+                if (audioCtx) {
+                    masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                    recordingGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                }
+                visualPulsePhase = 0;
+            }
+
+            ui.btnToggle.classList.toggle('bg-green-900', isPlaying);
+            ui.btnToggle.classList.toggle('border-green-700', isPlaying);
+            ui.btnToggle.classList.toggle('bg-red-900', !isPlaying);
+            ui.btnToggle.classList.toggle('border-red-700', !isPlaying);
+            ui.playIcon.classList.toggle('hidden', isPlaying);
+            ui.stopIcon.classList.toggle('hidden', !isPlaying);
+        }
+
+        // --- 음소거 토글 ---
+        function toggleMute() {
+            isMuted = !isMuted;
+            ui.speakerOnIcon.classList.toggle('hidden', isMuted);
+            ui.speakerOffIcon.classList.toggle('hidden', !isMuted);
+
+            if (isPlaying && audioCtx) {
+                if (triggerMode === 'continuous') {
+                    updateAudioParams();
+                } else if (isMuted) {
+                    masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+                }
+            }
+            saveSettings();
+        }
+
+        // --- 파형 값 계산 ---
+        function getCombinedWave(phaseOffset) {
+            if (selectedWaveforms.length === 0) return 0;
+            let summedValue = 0;
+            for (const waveform of selectedWaveforms) {
+                summedValue += getWaveValue(waveform, phaseOffset);
+            }
+            return summedValue / selectedWaveforms.length;
+        }
+
+        function getWaveValue(waveform, p) {
+            const normalizedPhase = ((p / (2 * Math.PI)) % 1 + 1) % 1;
+            switch (waveform) {
+                case 'square': return normalizedPhase < 0.5 ? 1.0 : -1.0;
+                case 'sawtooth': return 1.0 - 2.0 * normalizedPhase; // 하강 톱니파 (원래 방식)
+                case 'triangle':
+                    if (normalizedPhase < 0.25) return 4.0 * normalizedPhase;
+                    if (normalizedPhase < 0.75) return 2.0 - 4.0 * normalizedPhase;
+                    return -4.0 + 4.0 * normalizedPhase;
+                case 'sine':
+                default: return Math.sin(p);
+            }
+        }
+
+        // --- 캔버스 리사이즈 및 DPI 조정 ---
+        function resizeCanvas() {
+            [ui.transverseCanvas, ui.longitudinalCanvas].forEach(canvas => {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                canvas.getContext('2d').scale(dpr, dpr);
+            });
+            // 녹화 합성용 캔버스 (화면과 같은 세로 배치 + 제목/정보 영역)
+            const rect = ui.transverseCanvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const L = REC_LAYOUT;
+            ui.compositingCanvas.width = (rect.width + L.margin * 2) * dpr;
+            ui.compositingCanvas.height = (L.margin + (L.labelH + rect.height) * 2 + L.gap + L.infoH + L.margin) * dpr;
+            ui.compositingCanvas.getContext('2d').scale(dpr, dpr);
+        }
+
+        // --- 렌더링 로직 ---
+        // 부드러운 의사 난수 노이즈: 점마다·순간마다 규칙 없이 움직이게 하는 재료
+        function noiseHash(a, b) {
+            const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+            return (s - Math.floor(s)) * 2 - 1; // -1 ~ 1
+        }
+        function smoothNoise(x, t) {
+            const xi = Math.floor(x), ti = Math.floor(t);
+            const xf = x - xi, tf = t - ti;
+            const sx = xf * xf * (3 - 2 * xf), st = tf * tf * (3 - 2 * tf);
+            const a = noiseHash(xi, ti) + (noiseHash(xi + 1, ti) - noiseHash(xi, ti)) * sx;
+            const b = noiseHash(xi, ti + 1) + (noiseHash(xi + 1, ti + 1) - noiseHash(xi, ti + 1)) * sx;
+            return a + (b - a) * st;
+        }
+
+        function drawTransverseWave(ctx, width, height, amp, k, p, offset) {
+            // 진폭(%)을 픽셀로 변환: 100%일 때 캔버스 상하 여백 10px을 남기고 꽉 차도록
+            const pixelAmp = (amp / 100) * (height / 2 - 10);
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let x = 0; x < width; x++) {
+                const wavePhase = k * (x - width / 2) + p;
+                // 무작위 오차 같은 움직임: 대부분의 점은 거의 멈춰 있고,
+                // 그때그때 일부 구간만 불규칙하게 살짝 움직임 (세제곱으로 작은 값 억제)
+                const n = smoothNoise(x / 34, alivePhase * 0.8);
+                // 진폭이 낮을수록 떨림도 비례해서 약해짐
+                const jitter = aliveLevel * (amp / 100) * 2.4 * n * n * n * n * n; // 5제곱: 아주 드문 구간만 살짝 움직임
+                const y = (height / 2) + pixelAmp * getCombinedWave(wavePhase) + offset + jitter;
+                x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        function drawLongitudinalWave(ctx, width, height, amp, k, p, offset) {
+            ctx.fillStyle = '#f43f5e';
+            // 입자를 작고 촘촘하게: 화면 폭에 비례해 개수를 늘려 높은 진동수(짧은 파장)에서도 소밀이 보이도록
+            const numParticles = Math.max(160, Math.round(width / 3.5));
+            const spacing = width / numParticles;
+            for (let i = 0; i <= numParticles; i++) {
+                const xOriginal = i * spacing;
+                const wavePhase = k * (xOriginal - width / 2) + p;
+                const value = getCombinedWave(wavePhase);
+                const edgeFactor = Math.sin((i / numParticles) * Math.PI);
+                const dx = amp * edgeFactor * value + (offset * edgeFactor * 0.2);
+                // 입자별 무작위 오차 움직임 (종파는 가장 차분하게)
+                const nx = smoothNoise(i / 6, alivePhase * 0.7 + 50);
+                const jx = aliveLevel * (amp / 100) * 1.4 * nx * nx * nx * nx * nx;
+                for (let yOffset = -35; yOffset <= 35; yOffset += 8) {
+                    const radius = 1.9 * (1 - Math.abs(yOffset) / 35 * 0.3);
+                    const ny = smoothNoise(i / 6 + yOffset * 0.13, alivePhase * 0.6 + 120);
+                    const jy = aliveLevel * (amp / 100) * 1.0 * ny * ny * ny * ny * ny;
+                    ctx.beginPath();
+                    ctx.arc(xOriginal + dx + jx, (height / 2) + yOffset + jy, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function render() {
+            const canvasWidth = ui.transverseCanvas.getBoundingClientRect().width;
+            const canvasHeight = ui.transverseCanvas.getBoundingClientRect().height;
+
+            [ctxTransverse, ctxLongitudinal].forEach(ctx => {
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                ctx.beginPath();
+                ctx.strokeStyle = '#4a5568';
+                ctx.lineWidth = 0.5;
+                ctx.moveTo(0, canvasHeight / 2);
+                ctx.lineTo(canvasWidth, canvasHeight / 2);
+                ctx.stroke();
+            });
+
+            let targetAmp;
+            const maxAmp = isPlaying ? parseFloat(ui.sliderAmp.value) : 0;
+
+            if (isPlaying && triggerMode === 'pulse') {
+                const pulseRateHz = parseFloat(ui.pulseRateInput.value);
+                visualPulsePhase += (pulseRateHz * 2 * Math.PI) / 60;
+                const pulseModulation = Math.pow((Math.sin(visualPulsePhase) + 1) / 2, 2);
+                targetAmp = maxAmp * pulseModulation;
+            } else {
+                targetAmp = maxAmp;
+            }
+
+            visualAmp += (targetAmp - visualAmp) * 0.3;
+
+            // 재생 중일 때만 점들이 각자 미세하게 진동 (정지하면 서서히 잦아듦)
+            // 떨림 속도는 진동수에 따라 달라짐: 낮은 음은 느리게, 높은 음은 빠르게 (로그 스케일)
+            const freqVal = parseFloat(ui.sliderFreq.value);
+            alivePhase += 0.02 + 0.07 * Math.min(1, Math.log10(Math.max(1, freqVal)) / 4.3);
+            aliveLevel += ((isPlaying ? 1 : 0) - aliveLevel) * 0.08;
+            const aliveOffset = 0;
+            const k = (freqVal / 300) * 0.018;
+
+            drawTransverseWave(ctxTransverse, canvasWidth, canvasHeight, visualAmp, k, phase, aliveOffset);
+            drawLongitudinalWave(ctxLongitudinal, canvasWidth, canvasHeight, visualAmp, k, phase, aliveOffset);
+
+            // 녹화용 합성 캔버스에 화면과 같은 레이아웃으로 프레임을 그림
+            if (isRecording) {
+                drawRecordingFrame(canvasWidth, canvasHeight);
+            }
+
+            animationFrameId = requestAnimationFrame(render);
+        }
+
+        // --- 녹화 영상 프레임 구성 (세로 배치 + 제목/정보) ---
+        function drawRecordingFrame(w, h) {
+            const L = REC_LAYOUT;
+            const totalW = w + L.margin * 2;
+            const totalH = L.margin + (L.labelH + h) * 2 + L.gap + L.infoH + L.margin;
+
+            ctxCompositing.fillStyle = '#030712';
+            ctxCompositing.fillRect(0, 0, totalW, totalH);
+            ctxCompositing.textAlign = 'left';
+            ctxCompositing.textBaseline = 'middle';
+
+            let y = L.margin;
+
+            // 횡파 섹션
+            ctxCompositing.font = 'bold 16px Noto Sans KR, sans-serif';
+            ctxCompositing.fillStyle = '#22d3ee';
+            ctxCompositing.fillText('횡파', L.margin + 4, y + L.labelH / 2);
+            y += L.labelH;
+            ctxCompositing.fillStyle = '#111827';
+            ctxCompositing.fillRect(L.margin, y, w, h);
+            ctxCompositing.drawImage(ui.transverseCanvas, L.margin, y, w, h);
+            y += h + L.gap;
+
+            // 종파 섹션
+            ctxCompositing.font = 'bold 16px Noto Sans KR, sans-serif';
+            ctxCompositing.fillStyle = '#f43f5e';
+            ctxCompositing.fillText('종파(소밀파)', L.margin + 4, y + L.labelH / 2);
+            y += L.labelH;
+            ctxCompositing.fillStyle = '#111827';
+            ctxCompositing.fillRect(L.margin, y, w, h);
+            ctxCompositing.drawImage(ui.longitudinalCanvas, L.margin, y, w, h);
+            y += h;
+
+            // 하단 정보 (녹화 중 값을 바꾸면 실시간으로 반영됨)
+            const waveNames = selectedWaveforms.map(t => WAVE_NAMES[t] || t).join(', ');
+            let info = `진동수 ${ui.freqInput.value} Hz  ·  진폭 ${ui.ampInput.value} %  ·  파형: ${waveNames}`;
+            if (triggerMode === 'pulse') info += `  ·  펄스 속도 ${ui.pulseRateInput.value} Hz`;
+            ctxCompositing.font = '14px Noto Sans KR, sans-serif';
+            ctxCompositing.fillStyle = '#e5e7eb';
+            ctxCompositing.fillText(info, L.margin + 4, y + L.infoH / 2 + 4);
+        }
+
+        // --- 스크린샷 기능 ---
+        function captureAsContinuous(sourceCanvas, graphTitle) {
+            const dpr = window.devicePixelRatio || 1;
+            // 화면 캔버스가 좁아져도 캡처는 항상 긴 고정 폭으로 그려서 저장
+            const sourceWidth = 1200;
+            const sourceHeight = 200;
+
+            const waveCanvas = document.createElement('canvas');
+            const waveCtx = waveCanvas.getContext('2d');
+            waveCanvas.width = sourceWidth * dpr;
+            waveCanvas.height = sourceHeight * dpr;
+            waveCtx.scale(dpr, dpr);
+
+            waveCtx.fillStyle = '#111827';
+            waveCtx.fillRect(0, 0, sourceWidth, sourceHeight);
+            waveCtx.beginPath();
+            waveCtx.strokeStyle = '#4a5568';
+            waveCtx.lineWidth = 0.5;
+            waveCtx.moveTo(0, sourceHeight / 2);
+            waveCtx.lineTo(sourceWidth, sourceHeight / 2);
+            waveCtx.stroke();
+
+            // 재생 중이면 원래처럼 진폭 슬라이더 값으로, 멈춘 상태면 화면 그대로(멈춘 모습)로 캡처
+            const forcedAmp = isPlaying ? parseFloat(ui.sliderAmp.value) : visualAmp;
+            const k = (parseFloat(ui.sliderFreq.value) / 300) * 0.018;
+            const currentPhase = phase;
+
+            if (graphTitle === '횡파') {
+                drawTransverseWave(waveCtx, sourceWidth, sourceHeight, forcedAmp, k, currentPhase, 0);
+            } else {
+                drawLongitudinalWave(waveCtx, sourceWidth, sourceHeight, forcedAmp, k, currentPhase, 0);
+            }
+
+            const compositeCanvas = document.createElement('canvas');
+            const ctx = compositeCanvas.getContext('2d');
+            const textHeight = 60;
+            const margin = 15;
+
+            compositeCanvas.width = waveCanvas.width + margin * 2 * dpr;
+            compositeCanvas.height = waveCanvas.height + textHeight * dpr + margin * 3 * dpr;
+            ctx.scale(dpr, dpr);
+
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, compositeCanvas.width / dpr, compositeCanvas.height / dpr);
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(margin + 10, margin);
+            ctx.lineTo(margin + sourceWidth - 10, margin);
+            ctx.quadraticCurveTo(margin + sourceWidth, margin, margin + sourceWidth, margin + 10);
+            ctx.lineTo(margin + sourceWidth, margin + sourceHeight - 10);
+            ctx.quadraticCurveTo(margin + sourceWidth, margin + sourceHeight, margin + sourceWidth - 10, margin + sourceHeight);
+            ctx.lineTo(margin + 10, margin + sourceHeight);
+            ctx.quadraticCurveTo(margin, margin + sourceHeight, margin, margin + sourceHeight - 10);
+            ctx.lineTo(margin, margin + 10);
+            ctx.quadraticCurveTo(margin, margin, margin + 10, margin);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(waveCanvas, margin, margin, sourceWidth, sourceHeight);
+            ctx.restore();
+
+            const waves = selectedWaveforms.map(w => WAVE_NAMES[w] || w).join(', ');
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Noto Sans KR, sans-serif';
+            ctx.textBaseline = 'top';
+            ctx.fillText(graphTitle, margin + 15, margin + 15);
+
+            ctx.font = '12px Noto Sans KR, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(waves, margin + sourceWidth - 15, margin + 18);
+            ctx.textAlign = 'left';
+
+            const paramY = margin + sourceHeight + margin;
+            ctx.font = '14px Noto Sans KR, sans-serif';
+            ctx.fillText(`진동수: ${ui.freqInput.value} Hz`, margin + 15, paramY + 10);
+            ctx.fillText(`진폭: ${ui.ampInput.value} %`, margin + 15, paramY + 35);
+            if (triggerMode === 'pulse') {
+                ctx.fillText(`펄스 속도: ${ui.pulseRateInput.value} Hz`, margin + 180, paramY + 10);
+            }
+
+            const dataURL = compositeCanvas.toDataURL('image/png');
+            const time = new Date();
+            dbAdd('images', { dataURL, title: graphTitle, time: time.toISOString() })
+                .then(id => addToGallery(dataURL, graphTitle, { time, dbId: id }));
+        }
+
+        // --- 저장소 빈 슬롯 관리 ---
+        // 저장된 항목이 없어도 줄 높이를 유지하도록 보이지 않는 슬롯 1칸만 확보
+        // (여러 칸을 두면 좁은 창에서 투명 칸들이 넘쳐 불필요한 가로 스크롤바가 생김)
+        const PLACEHOLDER_MIN_SLOTS = 1;
+
+        function updatePlaceholders(container) {
+            container.querySelectorAll('.placeholder-item').forEach(el => el.remove());
+            const realCount = container.children.length;
+            const needed = Math.max(0, PLACEHOLDER_MIN_SLOTS - realCount);
+            for (let i = 0; i < needed; i++) {
+                const ph = document.createElement('div');
+                // 실제 항목과 같은 구조(카드+미디어+정보+버튼)로 만들어
+                // 어떤 화면 폭에서도 줄 높이가 정확히 일치하도록 함 (첫 저장 시 밀림 방지)
+                ph.className = 'gallery-item placeholder-item';
+                ph.innerHTML = '<div class="media-box"></div><div class="gallery-item-info">&nbsp;</div><div class="gallery-item-actions"><button>&nbsp;</button></div>';
+                container.appendChild(ph);
+            }
+        }
+
+        // 새 항목을 왼쪽부터 순서대로 채우고, 필요하면 새 항목이 보이도록 스크롤
+        function appendAndReveal(container, item) {
+            // 추가 전: 마지막 실제 항목이 화면에 보이는지 확인 (이전 항목을 보는 중이면 따라가지 않음)
+            let follow = true;
+            const reals = container.querySelectorAll(':scope > .gallery-item:not(.placeholder-item)');
+            if (reals.length) {
+                const last = reals[reals.length - 1];
+                const cR = container.getBoundingClientRect();
+                const lR = last.getBoundingClientRect();
+                follow = lR.left < cR.right && lR.right > cR.left;
+            }
+
+            // 왼쪽부터 순서대로 채움: 첫 빈 슬롯 자리에 추가
+            container.insertBefore(item, container.querySelector('.placeholder-item'));
+            updatePlaceholders(container);
+
+            // 새 항목이 화면 오른쪽 밖에 있으면 보이는 위치까지 따라 스크롤
+            if (follow) {
+                const cR = container.getBoundingClientRect();
+                const iR = item.getBoundingClientRect();
+                const overshoot = iR.right - cR.right;
+                if (overshoot > 0) {
+                    container.scrollBy({ left: overshoot + 12, behavior: 'smooth' });
+                }
+            }
+        }
+
+        // --- 비교 다운로드 버튼 상태 관리 (최대 3개 선택) ---
+        const COMPARE_MAX = 3;
+        const compareBtn = document.getElementById('download-selected-btn');
+
+        function updateCompareButton() {
+            const count = ui.galleryContainer.querySelectorAll('.select-box input:checked').length;
+            compareBtn.textContent = `비교 다운로드 (${count}/${COMPARE_MAX})`;
+            compareBtn.classList.toggle('active', count >= 1);
+        }
+
+        function addToGallery(dataURL, graphTitle, meta = {}) {
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+
+            const img = document.createElement('img');
+            img.src = dataURL;
+            img.alt = `${graphTitle} 캡처 이미지`;
+
+            // 사진과 그 아래 남는 공간(체크박스)을 동영상과 같은 세로 길이의 박스로 묶음
+            const mediaBox = document.createElement('div');
+            mediaBox.className = 'media-box';
+            const selectLabel = document.createElement('label');
+            selectLabel.className = 'select-box';
+            const selectCheckbox = document.createElement('input');
+            selectCheckbox.type = 'checkbox';
+            selectCheckbox.addEventListener('change', () => {
+                if (selectCheckbox.checked) {
+                    const checkedCount = ui.galleryContainer.querySelectorAll('.select-box input:checked').length;
+                    if (checkedCount > COMPARE_MAX) {
+                        selectCheckbox.checked = false;
+                        alert(`비교는 최대 ${COMPARE_MAX}개까지 선택할 수 있습니다.`);
+                    }
+                }
+                updateCompareButton();
+            });
+            selectLabel.appendChild(selectCheckbox);
+            mediaBox.appendChild(selectLabel); // 체크박스를 사진 위에 배치
+            mediaBox.appendChild(img);
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'gallery-item-info';
+            const now = meta.time || new Date();
+            infoDiv.textContent = `${graphTitle} - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'gallery-item-actions';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.textContent = '다운로드';
+            downloadBtn.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = dataURL;
+                a.download = `${graphTitle}_${now.getTime()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = '삭제';
+            deleteBtn.addEventListener('click', () => {
+                galleryItem.remove();
+                dbDelete('images', meta.dbId);
+                updatePlaceholders(ui.galleryContainer);
+                updateCompareButton();
+            });
+
+            actionsDiv.appendChild(downloadBtn);
+            actionsDiv.appendChild(deleteBtn);
+            galleryItem.appendChild(mediaBox);
+            galleryItem.appendChild(infoDiv);
+            galleryItem.appendChild(actionsDiv);
+
+            // 마지막 실제 항목이 화면에 보이는 중이면 새 항목까지 따라가고,
+            // 이전 항목들을 보러 스크롤해 둔 상태면 위치를 유지
+            const c = ui.galleryContainer;
+            appendAndReveal(c, galleryItem);
+        }
+
+        function addVideoToGallery(videoURL, meta = {}) {
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+
+            const video = document.createElement('video');
+            video.src = videoURL;
+            video.controls = true;
+            video.loop = true;
+            video.muted = true;
+            video.autoplay = true;
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'gallery-item-info';
+            const now = meta.time || new Date();
+            infoDiv.textContent = `녹화 - ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'gallery-item-actions';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.textContent = '다운로드';
+            downloadBtn.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = videoURL;
+                a.download = `simulation_${now.getTime()}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = '삭제';
+            deleteBtn.addEventListener('click', () => {
+                galleryItem.remove();
+                URL.revokeObjectURL(videoURL);
+                dbDelete('videos', meta.dbId);
+                updatePlaceholders(ui.videoGalleryContainer);
+            });
+
+            actionsDiv.appendChild(downloadBtn);
+            actionsDiv.appendChild(deleteBtn);
+            galleryItem.appendChild(video);
+            galleryItem.appendChild(infoDiv);
+            galleryItem.appendChild(actionsDiv);
+
+            // 마지막 실제 항목이 화면에 보이는 중이면 새 항목까지 따라가고,
+            // 이전 항목들을 보러 스크롤해 둔 상태면 위치를 유지
+            const c = ui.videoGalleryContainer;
+            appendAndReveal(c, galleryItem);
+        }
+
+        // --- 녹화 기능 ---
+        function startRecording() {
+            if (!audioCtx) initAudio();
+
+            const videoStream = ui.compositingCanvas.captureStream(30); // 30 fps
+            const audioStream = mediaStreamDestination.stream;
+            const combinedStream = new MediaStream([
+                ...videoStream.getVideoTracks(),
+                ...audioStream.getAudioTracks()
+            ]);
+
+            // 브라우저가 지원하는 코덱을 순서대로 선택
+            const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+                .find(t => MediaRecorder.isTypeSupported(t)) || '';
+
+            mediaRecorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : undefined);
+
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) videoChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const videoBlob = new Blob(videoChunks, { type: 'video/webm' });
+                const videoURL = URL.createObjectURL(videoBlob);
+                const time = new Date();
+                dbAdd('videos', { blob: videoBlob, time: time.toISOString() })
+                    .then(id => addVideoToGallery(videoURL, { time, dbId: id }));
+                videoChunks = [];
+                isRecording = false;
+                ui.btnRecord.classList.remove('recording');
+                ui.recordText.textContent = '녹화';
+            };
+
+            mediaRecorder.start(1000); // 1초 단위로 데이터를 모아 강제 종료 시에도 저장 가능하도록
+            isRecording = true;
+            ui.btnRecord.classList.add('recording');
+            ui.recordText.textContent = '중지';
+        }
+
+        // --- 이벤트 리스너 설정 ---
+        function setupEventListeners() {
+            function updatePulseRateUI(enabled) {
+                ui.pulseRateControl.toggleAttribute('disabled', !enabled);
+            }
+
+            ui.btnToggle.addEventListener('click', handlePlay);
+            ui.btnMute.addEventListener('click', toggleMute);
+
+            ui.triggerModeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    if (button.classList.contains('selected')) return;
+                    ui.triggerModeButtons.forEach(btn => btn.classList.remove('selected'));
+                    button.classList.add('selected');
+                    const newMode = button.id.split('-')[1];
+
+                    if (newMode !== triggerMode) {
+                        triggerMode = newMode;
+                        updatePulseRateUI(triggerMode === 'pulse');
+                        visualPulsePhase = 0;
+                        if (isPlaying) {
+                            // 새 모드로 재생을 다시 시작
+                            if (triggerMode === 'pulse') {
+                                startPulse();
+                            } else {
+                                stopPulse();
+                                updateAudioParams();
+                            }
+                        }
+                        saveSettings();
+                    }
+                });
+            });
+
+            ui.captureTransverseBtn.addEventListener('click', () => captureAsContinuous(ui.transverseCanvas, '횡파'));
+            ui.captureLongitudinalBtn.addEventListener('click', () => captureAsContinuous(ui.longitudinalCanvas, '종파'));
+
+            ui.btnRecord.addEventListener('click', () => {
+                if (isRecording) {
+                    mediaRecorder.stop();
+                } else {
+                    startRecording();
+                }
+            });
+
+            function updateSliderTrack(slider) {
+                const value = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+                slider.style.background = `linear-gradient(to right, #3b82f6 ${value}%, #4a5568 ${value}%)`;
+            }
+
+            function setupSlider(slider, input, onUpdate) {
+                const update = () => {
+                    input.value = slider.value;
+                    updateSliderTrack(slider);
+                    if (onUpdate) onUpdate();
+                    saveSettings();
+                };
+                slider.addEventListener('input', update);
+                input.addEventListener('change', () => {
+                    slider.value = input.value;
+                    update();
+                });
+            }
+
+            setupSlider(ui.sliderFreq, ui.freqInput, updateAudioParams);
+            setupSlider(ui.sliderAmp, ui.ampInput, updateAudioParams);
+            setupSlider(ui.sliderPulseRate, ui.pulseRateInput, () => {
+                if (isPlaying && triggerMode === 'pulse') {
+                    startPulse();
+                }
+            });
+
+            function setupHoldToRepeat(button, action, input, slider, min, max, onUpdate) {
+                let holdTimer = null, repeatTimer = null, currentRepeatDelay;
+                const initialRepeatDelay = 200, minRepeatDelay = 50, repeatDelayDecrement = 10;
+
+                const performUpdate = () => {
+                    let val = parseFloat(input.value);
+                    if (isNaN(val)) val = min;
+                    val = Math.min(max, Math.max(min, action(val)));
+                    const step = parseFloat(input.step) || 1;
+                    val = parseFloat(val.toFixed(step.toString().split('.')[1]?.length || 0));
+                    input.value = val;
+                    slider.value = val;
+                    updateSliderTrack(slider);
+                    if (onUpdate) onUpdate();
+                    saveSettings();
+                };
+                const startRepeating = () => {
+                    performUpdate();
+                    currentRepeatDelay = Math.max(minRepeatDelay, currentRepeatDelay - repeatDelayDecrement);
+                    repeatTimer = setTimeout(startRepeating, currentRepeatDelay);
+                };
+                const stopRepeating = () => {
+                    clearTimeout(holdTimer); holdTimer = null;
+                    clearTimeout(repeatTimer); repeatTimer = null;
+                };
+                button.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0) return; // 좌클릭만 (우클릭으로 인한 무한 반복 방지)
+                    e.preventDefault();
+                    stopRepeating(); // 이전 타이머가 남아 있으면 정리
+                    currentRepeatDelay = initialRepeatDelay;
+                    performUpdate();
+                    holdTimer = setTimeout(startRepeating, 500);
+                    document.addEventListener('mouseup', stopRepeating, { once: true });
+                });
+                // mouseup이 유실되는 경우(창 밖에서 놓기, 컨텍스트 메뉴 등)의 안전장치
+                window.addEventListener('blur', stopRepeating);
+                button.addEventListener('contextmenu', stopRepeating);
+            }
+            const pulseRateUpdate = () => { if (isPlaying && triggerMode === 'pulse') startPulse(); };
+            setupHoldToRepeat(document.getElementById('freqUp'), v => v + 1, ui.freqInput, ui.sliderFreq, 1, 20000, updateAudioParams);
+            setupHoldToRepeat(document.getElementById('freqDown'), v => v - 1, ui.freqInput, ui.sliderFreq, 1, 20000, updateAudioParams);
+            setupHoldToRepeat(document.getElementById('ampUp'), v => v + 1, ui.ampInput, ui.sliderAmp, 0, 100, updateAudioParams);
+            setupHoldToRepeat(document.getElementById('ampDown'), v => v - 1, ui.ampInput, ui.sliderAmp, 0, 100, updateAudioParams);
+            setupHoldToRepeat(document.getElementById('pulseRateUp'), v => v + 0.1, ui.pulseRateInput, ui.sliderPulseRate, 0.5, 10, pulseRateUpdate);
+            setupHoldToRepeat(document.getElementById('pulseRateDown'), v => v - 0.1, ui.pulseRateInput, ui.sliderPulseRate, 0.5, 10, pulseRateUpdate);
+
+            // 음계 메뉴: ♪ 아이콘을 클릭하면 열리고, 음을 고르면 진동수가 설정됨
+            const noteMenuBtn = document.getElementById('noteMenuBtn');
+            const noteMenu = document.getElementById('noteMenu');
+            noteMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!noteMenu.classList.contains('open')) {
+                    // ♪ 버튼 바로 아래에 화면 기준으로 배치
+                    const r = noteMenuBtn.getBoundingClientRect();
+                    noteMenu.style.left = r.left + 'px';
+                    noteMenu.style.top = (r.bottom + 6) + 'px';
+                }
+                noteMenu.classList.toggle('open');
+            });
+            noteMenu.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-freq]');
+                if (!btn) return;
+                const f = parseInt(btn.dataset.freq, 10);
+                ui.freqInput.value = f;
+                ui.sliderFreq.value = f;
+                updateSliderTrack(ui.sliderFreq);
+                updateAudioParams();
+                saveSettings();
+                // 선택해도 창은 열린 채 유지 (바깥을 클릭해야 닫힘)
+            });
+            document.addEventListener('click', (e) => {
+                if (!noteMenu.contains(e.target) && e.target !== noteMenuBtn) {
+                    noteMenu.classList.remove('open');
+                }
+            });
+
+            const overlapToggle = document.getElementById('overlapToggle');
+
+            ui.waveformButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const waveformId = button.id;
+                    if (!overlapToggle.checked) {
+                        // 중첩 꺼짐: 하나만 선택 (다른 파형을 누르면 교체)
+                        selectedWaveforms = [waveformId];
+                        ui.waveformButtons.forEach(b => b.classList.toggle('selected', b.id === waveformId));
+                    } else {
+                        // 중첩 켜짐: 여러 파형을 겹쳐 선택/해제
+                        const isSelected = selectedWaveforms.includes(waveformId);
+                        if (isSelected && selectedWaveforms.length === 1) {
+                            // 마지막 남은 주요 파형은 선택 해제 불가
+                        } else if (isSelected) {
+                            selectedWaveforms = selectedWaveforms.filter(w => w !== waveformId);
+                            button.classList.remove('selected');
+                        } else {
+                            selectedWaveforms.push(waveformId);
+                            button.classList.add('selected');
+                        }
+                    }
+                    syncOscillators();
+                    saveSettings();
+                });
+            });
+
+            // 중첩을 끄는 순간 여러 개가 선택돼 있으면 가장 최근 것 하나만 남김
+            overlapToggle.addEventListener('change', () => {
+                if (!overlapToggle.checked && selectedWaveforms.length > 1) {
+                    const keep = selectedWaveforms[selectedWaveforms.length - 1];
+                    selectedWaveforms = [keep];
+                    ui.waveformButtons.forEach(b => b.classList.toggle('selected', b.id === keep));
+                    syncOscillators();
+                }
+                saveSettings();
+            });
+
+            // '전체 보기' 알약 버튼: 가로 스크롤 한 줄 ↔ 전체 펼침 전환
+            function setupExpandToggle(button, container) {
+                button.addEventListener('click', () => {
+                    const expanded = container.classList.toggle('expanded');
+                    button.textContent = expanded ? '접기' : '전체 보기';
+                });
+            }
+            setupExpandToggle(document.getElementById('expand-images-btn'), ui.galleryContainer);
+            setupExpandToggle(document.getElementById('expand-videos-btn'), ui.videoGalleryContainer);
+
+            // 체크된 사진들을 세로로 이어 붙인 한 장의 비교 이미지로 저장
+            document.getElementById('download-selected-btn').addEventListener('click', () => {
+                const checked = ui.galleryContainer.querySelectorAll('.select-box input:checked');
+                if (checked.length === 0) {
+                    alert('비교할 사진을 먼저 체크해 주세요.');
+                    return;
+                }
+                const images = [...checked].map(cb => cb.closest('.gallery-item').querySelector('img'));
+                const gap = 24;
+                const width = Math.max(...images.map(im => im.naturalWidth));
+
+                // 모든 사진을 같은 폭으로 맞춰 세로로 쌓았을 때의 전체 높이 계산
+                const heights = images.map(im => im.naturalHeight * (width / im.naturalWidth));
+                const totalHeight = heights.reduce((s, h) => s + h, 0) + gap * (images.length + 1);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width + gap * 2;
+                canvas.height = totalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#030712';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                let y = gap;
+                images.forEach((im, i) => {
+                    ctx.drawImage(im, gap, y, width, heights[i]);
+                    y += heights[i] + gap;
+                });
+
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = `파동_비교_${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            window.addEventListener('resize', resizeCanvas);
+            updateSliderTrack(ui.sliderFreq);
+            updateSliderTrack(ui.sliderAmp);
+            updateSliderTrack(ui.sliderPulseRate);
+            updatePulseRateUI(triggerMode === 'pulse');
+        }
+
+        // --- 초기화 ---
+        loadSettings();          // 저장된 설정 복원 (재생 상태는 저장하지 않으므로 항상 정지로 시작)
+        resizeCanvas();
+        setupEventListeners();
+        applyRestoredState();
+        updatePlaceholders(ui.galleryContainer);
+        updatePlaceholders(ui.videoGalleryContainer);
+        restoreGalleries();      // 저장된 이미지/동영상 복원
+
+        // 페이지를 닫거나 벗어날 때: 설정 저장 + 녹화 중이면 강제 종료 후 저장 시도
+        window.addEventListener('pagehide', () => {
+            saveSettings();
+            if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch (e) {}
+            }
+        });
+
+        render();
+    </script>
+</body>
+</html>
